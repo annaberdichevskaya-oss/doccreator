@@ -111,8 +111,8 @@ small.g{color:#6b7280;font-size:10px}
 <div class="wrap">
 
   <div class="note">
-    ⚙️ <b>Налаштування API.</b> У режимі попереднього перегляду в Claude розпізнавання працює одразу.
-    Для розгортання на Vercel впиши свій ключ у <code>API_CONFIG</code> на початку скрипта (як у DocCheck).
+    ⚙️ <b>Налаштування.</b> Ключ Anthropic зберігається на сервері Vercel (змінна оточення <code>ANTHROPIC_API_KEY</code>),
+    а не в цьому файлі. Розпізнавання працює на розгорнутому сайті. У прев'ю Claude кнопка «Приклад (демо)» показує формат без API.
   </div>
 
   <!-- UPLOAD -->
@@ -330,12 +330,12 @@ small.g{color:#6b7280;font-size:10px}
 
 <script>
 /* ============ API CONFIG ============ */
-/* У прев'ю Claude працює без ключа. Для Vercel — впиши ключ/проксі як у DocCheck. */
+/* Ключ живе на сервері (Vercel env), НЕ тут. Браузер б'є у власний проксі /api/anthropic. */
 var API_CONFIG = {
-  endpoint: "https://api.anthropic.com/v1/messages",
-  apiKey: "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",          // <-- для розгортання впиши свій ключ (або лиши порожнім якщо проксі)
+  endpoint: "/api/anthropic",   // проксі на Vercel (див. файл api/anthropic.js)
+  apiKey: "",                    // ключ у клієнті не потрібен і не має тут бути
   model: "claude-sonnet-4-6",
-  maxTokens: 8000      // запас під кирилицю
+  maxTokens: 8000               // запас під кирилицю
 };
 
 /* ============ Slots ============ */
@@ -387,7 +387,7 @@ function imageToJpeg(blob){
     var url = URL.createObjectURL(blob);
     var img = new Image();
     img.onload = function(){
-      var max = 2200, w = img.naturalWidth, h = img.naturalHeight;
+      var max = 1568, w = img.naturalWidth, h = img.naturalHeight;
       var scale = Math.min(1, max/Math.max(w,h));
       var cw = Math.max(1,Math.round(w*scale)), ch = Math.max(1,Math.round(h*scale));
       var canvas = document.createElement("canvas");
@@ -535,7 +535,13 @@ async function runExtract(){
         messages:[{role:"user", content:buildContent()}]
       })
     });
-    var data = await res.json();
+    var raw = await res.text();
+    if(!res.ok){
+      throw new Error("сервер повернув " + res.status + (raw ? (": " + raw.slice(0,180)) : " (порожньо — ймовірно таймаут)"));
+    }
+    if(!raw){ throw new Error("порожня відповідь (ймовірно таймаут аналізу). Спробуй менше документів за раз."); }
+    var data = JSON.parse(raw);
+    if(data.error){ throw new Error((data.error.message||data.error) + ""); }
     var text = (data.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("\n");
     text = text.replace(/```json|```/g,"").trim();
     var jsonStart = text.indexOf("{"), jsonEnd = text.lastIndexOf("}");
