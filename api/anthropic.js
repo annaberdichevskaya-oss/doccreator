@@ -32,8 +32,7 @@ export default async function handler(req, res) {
   }
 }
 
+// Дати функції більше часу на аналіз документів (Vercel Hobby: до 60с; дефолт лише 10с)
 export const config = {
-  api: {
-    bodyParser: { sizeLimit: "10mb" }
-  }
+  maxDuration: 60
 };
