@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocCreator — CMR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a2e}
+header{background:#1a1a2e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{color:#fff;font-size:16px;font-weight:700}.logo-text span{color:#3b82f6}
+.logo-sub{color:#6b7280;font-size:9px;letter-spacing:.1em}
+.hbtns{display:flex;gap:8px}
+.hbtn{background:none;border:1px solid #2d2d4e;border-radius:6px;color:#9ca3af;font-size:12px;padding:6px 12px;cursor:pointer;font-family:inherit}
+.hbtn:hover{background:#2d2d4e;color:#fff}
+.hbtn.primary{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.hbtn.primary:hover{background:#2563eb}
+.hbtn.green{background:#16a34a;border-color:#16a34a;color:#fff}
+.hbtn.green:hover{background:#15803d}
+
+.wrap{max-width:1180px;margin:0 auto;padding:18px}
+
+/* Upload panel */
+.upload-panel{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:18px}
+.panel-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.panel-sub{font-size:12px;color:#6b7280;margin-bottom:14px}
+.dropzone{border:2px dashed #cbd5e1;border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:14px}
+.dropzone:hover,.dropzone.drag{border-color:#3b82f6;background:#f0f7ff}
+.dz-icon{font-size:30px;margin-bottom:6px}
+.dz-text{font-size:13px;color:#374151;font-weight:600}
+.dz-sub{font-size:11px;color:#9ca3af;margin-top:3px}
+
+.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:760px){.slots{grid-template-columns:repeat(2,1fr)}}
+.slot{border:1px solid #e5e7eb;border-radius:9px;padding:10px;background:#fafafa;cursor:pointer;transition:.15s;position:relative}
+.slot:hover{border-color:#93c5fd;background:#f0f7ff}
+.slot.filled{border-color:#86efac;background:#f0fdf4}
+.slot-name{font-size:12px;font-weight:700;margin-bottom:2px}
+.slot-hint{font-size:10px;color:#9ca3af;line-height:1.3}
+.slot-file{font-size:10px;color:#16a34a;margin-top:6px;word-break:break-all;font-weight:600}
+.slot-x{position:absolute;top:6px;right:8px;font-size:13px;color:#9ca3af;cursor:pointer}
+.slot-x:hover{color:#ef4444}
+
+.actions-row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600}
+.btn-blue{background:#3b82f6;color:#fff}.btn-blue:hover{background:#2563eb}
+.btn-blue:disabled{background:#cbd5e1;cursor:not-allowed}
+.btn-gray{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}.btn-gray:hover{background:#e5e7eb}
+.status{font-size:12px;color:#6b7280}
+.status.work{color:#3b82f6}.status.ok{color:#16a34a}.status.err{color:#ef4444}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid #bfdbfe;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CMR FORM ── */
+.cmr-toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:10px}
+.cmr-sheet{background:#fff;width:210mm;max-width:100%;margin:0 auto;padding:6mm;box-shadow:0 1px 6px rgba(0,0,0,.12);font-size:9px;color:#111}
+.cmr-grid{border:1.5px solid #c00;border-collapse:collapse;width:100%;table-layout:fixed}
+.cmr-grid td{border:1px solid #c00;vertical-align:top;padding:2px 3px;position:relative}
+.bn{color:#c00;font-weight:700;font-size:11px;margin-right:3px}
+.lbl{color:#c00;font-size:7px;line-height:1.15;display:block;margin-bottom:1px}
+.lbl .de{color:#c00;font-style:italic;opacity:.8}
+.cmr-grid input,.cmr-grid textarea{width:100%;border:none;outline:none;font-family:inherit;font-size:10px;color:#000;background:transparent;resize:none;padding:1px 2px}
+.cmr-grid input:focus,.cmr-grid textarea:focus{background:#fffbe6}
+.cmr-grid textarea{min-height:34px;line-height:1.25}
+.cell-pad{padding:3px}
+.cmr-head{text-align:center;font-size:8px;color:#c00;line-height:1.2}
+.cmr-logo{display:inline-block;border:2px solid #c00;border-radius:30px;padding:3px 12px;font-weight:700;font-size:16px;color:#c00;letter-spacing:1px}
+.cmr-nr{font-size:14px;font-weight:700;color:#c00;display:inline-block;margin-left:4px}
+.cmr-nr input{display:inline-block;width:130px;font-size:13px;font-weight:700;color:#c00;border-bottom:1px solid #c00}
+.boiler{font-size:6.5px;color:#c00;line-height:1.25;text-align:left;margin-top:3px}
+.subgrid{width:100%;border-collapse:collapse}
+.subgrid td{border:1px solid #c00;font-size:7px;padding:1px 2px}
+.frei label{display:flex;align-items:center;gap:4px;font-size:9px;margin:2px 0}
+.pay-tbl{width:100%;border-collapse:collapse}
+.pay-tbl td{border:1px solid #c00;font-size:7px;padding:1px 2px;height:13px}
+.pay-tbl input{font-size:8px}
+.chk{width:11px;height:11px}
+small.g{color:#6b7280;font-size:10px}
+
+@media print{
+  body{background:#fff}
+  header,.upload-panel,.cmr-toolbar,.wrap>.note{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .cmr-sheet{box-shadow:none;width:auto;padding:0;margin:0}
+  .cmr-grid input,.cmr-grid textarea{background:transparent!important}
+  @page{size:A4;margin:8mm}
+}
+.note{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:11px;color:#92400e;margin-bottom:14px;line-height:1.5}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📄</div>
+    <div>
+      <div class="logo-text">Doc<span>Creator</span></div>
+      <div class="logo-sub">CMR GENERATOR</div>
+    </div>
+  </div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="resetAll()">🗑 Очистити</button>
+    <button class="hbtn green" onclick="window.print()">🖨 Друк / PDF</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="note">
+    ⚙️ <b>Налаштування API.</b> У режимі попереднього перегляду в Claude розпізнавання працює одразу.
+    Для розгортання на Vercel впиши свій ключ у <code>API_CONFIG</code> на початку скрипта (як у DocCheck).
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-panel">
+    <div class="panel-title">📥 Завантаження документів</div>
+    <div class="panel-sub">Завантаж усі документи одразу або по одному в потрібну комірку. Підтримка: PDF та фото будь-якого формату (JPG, PNG, WEBP, HEIC з айфона тощо).</div>
+
+    <div class="dropzone" id="dz" onclick="document.getElementById('bulk-inp').click()">
+      <div class="dz-icon">📂</div>
+      <div class="dz-text">Завантажити ВСІ документи одразу</div>
+      <div class="dz-sub">перетягни сюди або натисни — інвойс, пакувальний, EX, CO, E-factura</div>
+    </div>
+    <input type="file" id="bulk-inp" accept="image/*,.pdf,.heic,.heif" multiple style="display:none" onchange="handleBulk(this.files)">
+
+    <div class="slots" id="slots"></div>
+
+    <div class="actions-row">
+      <button class="btn btn-blue" id="extract-btn" onclick="runExtract()" disabled>✨ Розпізнати та заповнити CMR</button>
+      <button class="btn btn-gray" onclick="fillSample()">Приклад (демо)</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <!-- CMR FORM -->
+  <div class="cmr-toolbar">
+    <button class="btn btn-gray" onclick="window.print()">🖨 Друк / Зберегти PDF</button>
+  </div>
+
+  <div class="cmr-sheet" id="cmr-sheet">
+    <table class="cmr-grid">
+      <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+
+      <!-- Row: box 1 + header -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">1</span><span class="lbl">Відправник (ім'я, адреса, країна)<span class="de"> Absender (Name, Anschrift, Land)</span></span>
+          <textarea id="f-sender" rows="4"></textarea>
+        </td>
+        <td class="cell-pad" style="text-align:center">
+          <div class="cmr-head">
+            <b>Міжнародний</b> Сировинні та транспортні послуги рахунок<br>
+            <b>Міжнародний</b> Товарно-транспортна
+          </div>
+          <div style="margin:4px 0">
+            <span class="cmr-logo">CMR</span>
+            <span class="cmr-nr">Nr.<input id="f-cmrnr" placeholder="________"></span>
+          </div>
+          <div class="boiler">
+            Таке транспортування, незважаючи на для будь-яких інших договорів здійснюється відповідно до з умовами Конвенції про Договір Міжнародні автомобільні перевезення.
+            <i>Diese Beförderung unterliegt trotz einer gegenteiligen Abmachung den Bestimmungen des Übereinkommens über den Beförderungsvertrag im internat. Straßengüterverkehr (CMR)</i>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Row: box 2 + box 16 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">2</span><span class="lbl">Одержувач (ім'я, адреса, країна)<span class="de"> Empfänger (Name, Anschrift, Land)</span></span>
+          <textarea id="f-consignee" rows="4"></textarea>
+        </td>
+        <td class="cell-pad">
+          <span class="bn">16</span><span class="lbl">Перевізник (назва, адреса, країна)<span class="de"> Frachtführer (Name, Anschrift, Land)</span></span>
+          <textarea id="f-carrier" rows="4"></textarea>
+        </td>
+      </tr>
+
+      <!-- Row: box 3 + box 17 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">3</span><span class="lbl">Місце вивантаження вантажу<span class="de"> Auslieferungsort des Gutes</span></span>
+          <input id="f-delivery">
+        </td>
+        <td class="cell-pad">
+          <span class="bn">17</span><span class="lbl">Наступний перевізник (назва, адреса, країна)<span class="de"> Nachfolgende Frachtführer</span></span>
+          <input id="f-nextcarrier">
+        </td>
+      </tr>
+
+      <!-- Row: box 4 + box 18 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">4</span><span class="lbl">Місце і дата завантаження вантажу<span class="de"> Ort und Tag der Übernahme des Gutes</span></span>
+          <input id="f-loading">
+        </td>
+        <td class="cell-pad">
+          <span class="bn">18</span><span class="lbl">Бронювання та зауваження перевізника<span class="de"> Vorbehalte und Bemerkungen der Frachtführer</span></span>
+          <textarea id="f-reserv" rows="2"></textarea>
+        </td>
+      </tr>
+
+      <!-- Row: box 5 (spans) -->
+      <tr>
+        <td class="cell-pad" colspan="2">
+          <span class="bn">5</span><span class="lbl" style="display:inline">Додані документи<span class="de"> Beigefügte Dokumente</span></span>
+          <textarea id="f-docs" rows="2"></textarea>
+        </td>
+      </tr>
+
+      <!-- Row: boxes 6-12 header -->
+      <tr>
+        <td colspan="2" style="padding:0">
+          <table class="subgrid">
+            <tr>
+              <td style="width:14%"><span class="bn">6</span>Знаки та номера<br><i>Kennzeichen u. Nummern</i></td>
+              <td style="width:11%"><span class="bn">7</span>К-сть місць<br><i>Anzahl Packstücke</i></td>
+              <td style="width:12%"><span class="bn">8</span>Вид упаковки<br><i>Art der Verpackung</i></td>
+              <td style="width:25%"><span class="bn">9</span>Назва вантажу<br><i>Bezeichnung des Gutes</i></td>
+              <td style="width:10%"><span class="bn">10</span>Статист.№<br><i>Statistik-Nr.</i></td>
+              <td style="width:14%"><span class="bn">11</span>Вага брутто, кг<br><i>Bruttogew., kg</i></td>
+              <td style="width:14%"><span class="bn">12</span>Об'єм, м3<br><i>Umfang in m3</i></td>
+            </tr>
+            <tr>
+              <td><textarea id="f-marks" rows="3"></textarea></td>
+              <td><textarea id="f-packages" rows="3"></textarea></td>
+              <td><textarea id="f-packing" rows="3"></textarea></td>
+              <td><textarea id="f-goods" rows="3"></textarea></td>
+              <td><textarea id="f-stat" rows="3"></textarea></td>
+              <td><textarea id="f-weight" rows="3"></textarea></td>
+              <td><textarea id="f-volume" rows="3"></textarea></td>
+            </tr>
+            <tr>
+              <td colspan="7" style="padding:0">
+                <table class="subgrid"><tr>
+                  <td style="width:25%">Клас <i>Klasse</i></td><td style="width:25%">Цифра <i>Ziffer</i></td>
+                  <td style="width:25%">Буква <i>Buchstabe</i></td><td style="width:25%">ДОПОЛ. ADR</td>
+                </tr></table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Row: box 13 + box 19 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">13</span><span class="lbl">Інструкції вантажовідправника (митна та ін. обробка)<span class="de"> Anweisungen des Absenders</span></span>
+          <textarea id="f-instr" rows="6"></textarea>
+        </td>
+        <td style="padding:0">
+          <table class="pay-tbl">
+            <tr>
+              <td colspan="2"><span class="bn">19</span>Підлягає оплаті <i>Zu zahlen vom</i></td>
+              <td>Відправника<br><i>Absender</i></td><td>Валюта<br><i>Währung</i></td><td>Одержувач<br><i>Empfänger</i></td>
+            </tr>
+            <tr><td colspan="2">Ставка <i>Fracht</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Скидки <i>Ermäßigungen</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Різниця <i>Zwischensumme</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Додаткові збори <i>Nebengebühren</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Інше <i>Sonstiges</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Всього до оплати <i>Zu zahlende Ges.-Su.</i></td><td><input></td><td><input></td><td><input></td></tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Row: box 14 spans / placed left, 20 right -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">14</span><span class="lbl" style="display:inline">Повернення<span class="de"> Rückerstattung</span></span>
+          <input id="f-return">
+          <div style="margin-top:4px">
+            <span class="bn">15</span><span class="lbl" style="display:inline">Умови оплати<span class="de"> Frachtzahlungsanweisungen</span></span>
+            <div class="frei">
+              <label><input type="checkbox" class="chk" id="f-frei"> франко <i>Frei</i></label>
+              <label><input type="checkbox" class="chk" id="f-unfrei"> нефранко <i>Unfrei</i></label>
+            </div>
+          </div>
+        </td>
+        <td class="cell-pad">
+          <span class="bn">20</span><span class="lbl">Спеціальні узгоджені умови<span class="de"> Besondere Vereinbarungen</span></span>
+          <textarea id="f-special" rows="5"></textarea>
+        </td>
+      </tr>
+
+      <!-- Row: box 21 + 24 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">21</span><span class="lbl" style="display:inline">Складено в <span class="de">Ausgefertigt in</span></span>
+          <input id="f-estplace" placeholder="місто, країна">
+          <div style="margin-top:3px"><span class="lbl" style="display:inline">Дата <span class="de">am</span></span>
+          <input id="f-estdate" placeholder="дд/мм/рррр"></div>
+        </td>
+        <td class="cell-pad">
+          <span class="bn">24</span><span class="lbl">Вантаж отримано&nbsp;&nbsp;&nbsp;&nbsp;Дата<span class="de"> Gut empfangen&nbsp;&nbsp;Datum</span></span>
+          <div style="height:38px"></div>
+        </td>
+      </tr>
+
+      <!-- Row: box 22 signature -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">22</span><span class="lbl">Відправник (назва, адреса, країна)<span class="de"> Absender (Name, Anschrift, Land)</span></span>
+          <textarea id="f-sender2" rows="4"></textarea>
+        </td>
+        <td class="cell-pad">
+          <span class="bn">23</span><span class="lbl">Перевізник<span class="de"> Frachtführer</span></span>
+          <div style="height:54px"></div>
+        </td>
+      </tr>
+
+      <!-- Row: box 25 + 26 -->
+      <tr>
+        <td class="cell-pad">
+          <span class="bn">25</span><span class="lbl">Реєстрац. номер / Amtliches Kennzeichen — Тягач/Kfz · Полупричіп/Anhänger</span>
+          <input id="f-plates">
+        </td>
+        <td class="cell-pad">
+          <span class="bn">26</span><span class="lbl">Марка / Typ — Тягач/Kfz · Полупричіп/Anhänger</span>
+          <input id="f-make">
+        </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+/* ============ API CONFIG ============ */
+/* У прев'ю Claude працює без ключа. Для Vercel — впиши ключ/проксі як у DocCheck. */
+var API_CONFIG = {
+  endpoint: "https://api.anthropic.com/v1/messages",
+  apiKey: "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",          // <-- для розгортання впиши свій ключ (або лиши порожнім якщо проксі)
+  model: "claude-sonnet-4-6",
+  maxTokens: 8000      // запас під кирилицю
+};
+
+/* ============ Slots ============ */
+var SLOT_DEFS = [
+  {key:"invoice",  name:"Інвойс",          hint:"Invoice — продавець, покупець, товар, сума"},
+  {key:"packing",  name:"Пакувальний",     hint:"Packing List — місця, вага, об'єм"},
+  {key:"ex",       name:"EX",              hint:"Експортна декларація (MRN)"},
+  {key:"co",       name:"CO",              hint:"Сертифікат походження"},
+  {key:"efactura", name:"E-factura",       hint:"Електронна фактура"}
+];
+var files = {}; // key -> {name, b64, mime}
+
+function renderSlots(){
+  var html = "";
+  SLOT_DEFS.forEach(function(s){
+    var f = files[s.key];
+    html += "<div class='slot " + (f?"filled":"") + "' onclick='pickSlot(\"" + s.key + "\")'>"
+      + (f ? "<span class='slot-x' onclick='event.stopPropagation();clearSlot(\"" + s.key + "\")'>✕</span>" : "")
+      + "<div class='slot-name'>" + s.name + "</div>"
+      + "<div class='slot-hint'>" + s.hint + "</div>"
+      + (f ? "<div class='slot-file'>📎 " + f.name + "</div>" : "")
+      + "</div>";
+  });
+  document.getElementById("slots").innerHTML = html;
+  document.getElementById("extract-btn").disabled = Object.keys(files).length === 0;
+}
+
+var _pendingSlot = null;
+function pickSlot(key){
+  _pendingSlot = key;
+  var inp = document.getElementById("slot-inp");
+  inp.value = "";
+  inp.click();
+}
+function clearSlot(key){ delete files[key]; renderSlots(); }
+
+function readFileB64(file){
+  return new Promise(function(res,rej){
+    var r = new FileReader();
+    r.onload = function(){ res(r.result.split(",")[1]); };
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+/* Draw any browser-decodable image onto a canvas, downscale, export as JPEG base64 */
+function imageToJpeg(blob){
+  return new Promise(function(res,rej){
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function(){
+      var max = 2200, w = img.naturalWidth, h = img.naturalHeight;
+      var scale = Math.min(1, max/Math.max(w,h));
+      var cw = Math.max(1,Math.round(w*scale)), ch = Math.max(1,Math.round(h*scale));
+      var canvas = document.createElement("canvas");
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,cw,ch);
+      ctx.drawImage(img,0,0,cw,ch);
+      URL.revokeObjectURL(url);
+      try { res(canvas.toDataURL("image/jpeg",0.9).split(",")[1]); }
+      catch(e){ rej(e); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("формат не читається браузером")); };
+    img.src = url;
+  });
+}
+
+/* Normalize ANY file: PDF stays PDF; any image (jpg/png/webp/gif/bmp/tiff/heic…) → JPEG */
+async function prepareFile(file){
+  var name = file.name;
+  var isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(name);
+  if(isPdf){
+    var raw = await readFileB64(file);
+    return {name:name, b64:raw, mime:"application/pdf"};
+  }
+  var srcBlob = file;
+  var isHeic = /heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(name);
+  if(isHeic && window.heic2any){
+    try { srcBlob = await heic2any({blob:file, toType:"image/jpeg", quality:0.9}); }
+    catch(e){ /* fallback: спробуємо як є */ }
+    if(Array.isArray(srcBlob)) srcBlob = srcBlob[0];
+  }
+  var jpeg = await imageToJpeg(srcBlob);
+  return {name:name, b64:jpeg, mime:"image/jpeg"};
+}
+
+async function handleSlotFile(file){
+  if(!file || !_pendingSlot) return;
+  var slot = _pendingSlot; _pendingSlot = null;
+  setStatus("Обробляю файл…","work");
+  try{
+    files[slot] = await prepareFile(file);
+    setStatus("");
+  }catch(e){ setStatus("Не вдалось прочитати «" + file.name + "»: " + e.message,"err"); }
+  renderSlots();
+}
+
+/* Bulk: auto-assign by filename keyword, rest into first empty slots */
+async function handleBulk(fileList){
+  var arr = Array.prototype.slice.call(fileList);
+  setStatus("Обробляю " + arr.length + " файл(ів)…","work");
+  var failed = [];
+  for(var i=0;i<arr.length;i++){
+    var file = arr[i];
+    var nm = file.name.toLowerCase();
+    var key = guessSlot(nm);
+    if(!key || files[key]) key = firstEmptySlot();
+    if(!key) continue;
+    try { files[key] = await prepareFile(file); }
+    catch(e){ failed.push(file.name); }
+  }
+  renderSlots();
+  setStatus(failed.length
+    ? "⚠️ Готово, але не прочитано: " + failed.join(", ")
+    : "Завантажено " + arr.length + " файл(ів). Перевір розкладку по комірках.",
+    failed.length ? "err" : "ok");
+}
+function guessSlot(nm){
+  if(/invoice|інвойс|инвойс|факт/.test(nm) && !/e.?fact/.test(nm)) return "invoice";
+  if(/pack|пак/.test(nm)) return "packing";
+  if(/\bex\b|export|експорт|mrn/.test(nm)) return "ex";
+  if(/\bco\b|origin|походж|сертиф/.test(nm)) return "co";
+  if(/e.?fact/.test(nm)) return "efactura";
+  return null;
+}
+function firstEmptySlot(){
+  for(var i=0;i<SLOT_DEFS.length;i++){ if(!files[SLOT_DEFS[i].key]) return SLOT_DEFS[i].key; }
+  return null;
+}
+
+/* Drag&drop */
+var dz = document.getElementById("dz");
+["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add("drag");}); });
+["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove("drag");}); });
+dz.addEventListener("drop",function(e){ if(e.dataTransfer.files.length) handleBulk(e.dataTransfer.files); });
+
+/* ============ Extraction ============ */
+function setStatus(msg, cls){
+  var el = document.getElementById("status");
+  el.className = "status " + (cls||"");
+  el.innerHTML = (cls==="work" ? "<span class='spinner'></span>" : "") + msg;
+}
+
+function buildContent(){
+  var content = [];
+  var labels = {invoice:"ІНВОЙС", packing:"ПАКУВАЛЬНИЙ ЛИСТ", ex:"EX (експортна декларація)", co:"CO (сертифікат походження)", efactura:"E-FACTURA"};
+  SLOT_DEFS.forEach(function(s){
+    var f = files[s.key];
+    if(!f) return;
+    content.push({type:"text", text:"=== ДОКУМЕНТ: " + labels[s.key] + " ==="});
+    if(f.mime.indexOf("pdf")>=0){
+      content.push({type:"document", source:{type:"base64", media_type:"application/pdf", data:f.b64}});
+    } else {
+      content.push({type:"image", source:{type:"base64", media_type:f.mime, data:f.b64}});
+    }
+  });
+  content.push({type:"text", text:EXTRACT_PROMPT});
+  return content;
+}
+
+var EXTRACT_PROMPT =
+"Ти асистент логіста. Проаналізуй надані документи (інвойс, пакувальний лист, EX, CO, E-factura) і витягни дані для заповнення міжнародної товарно-транспортної накладної CMR.\n\n" +
+"Поверни ВИКЛЮЧНО валідний JSON без markdown, без пояснень, у такій структурі (порожнє поле = \"\"):\n" +
+"{\n" +
+'  "sender": "повна назва, адреса, країна відправника/продавця",\n' +
+'  "consignee": "повна назва, адреса, країна одержувача/покупця",\n' +
+'  "delivery": "місто, країна вивантаження",\n' +
+'  "loading": "місто, країна завантаження",\n' +
+'  "docs": "перелік доданих документів: Invoice No ... dtd ..., EX/MRN ..., CO ..., E-factura ...",\n' +
+'  "marks": "знаки/маркування",\n' +
+'  "packages": "кількість місць (напр. 366 pack)",\n' +
+'  "packing": "вид упаковки",\n' +
+'  "goods": "назва/опис вантажу",\n' +
+'  "weight": "вага брутто в кг (напр. 8299.19 KG)",\n' +
+'  "volume": "обєм м3",\n' +
+'  "invoice_no": "номер інвойсу",\n' +
+'  "invoice_date": "дата інвойсу"\n' +
+"}\n\n" +
+"Правила: числа/ваги бери з пакувального листа якщо є; відправника й товар — з інвойсу. Дати у форматі дд.мм.рррр. Нічого не вигадуй — якщо немає, лиши \"\".";
+
+async function runExtract(){
+  if(Object.keys(files).length===0){ setStatus("Спершу завантаж документи","err"); return; }
+  setStatus("Аналізую документи…","work");
+  document.getElementById("extract-btn").disabled = true;
+  try{
+    var headers = {"Content-Type":"application/json"};
+    if(API_CONFIG.apiKey){
+      headers["x-api-key"]=API_CONFIG.apiKey;
+      headers["anthropic-version"]="2023-06-01";
+      headers["anthropic-dangerous-direct-browser-access"]="true"; // дозволяє виклик з браузера
+    }
+    var res = await fetch(API_CONFIG.endpoint,{
+      method:"POST", headers:headers,
+      body:JSON.stringify({
+        model:API_CONFIG.model, max_tokens:API_CONFIG.maxTokens,
+        messages:[{role:"user", content:buildContent()}]
+      })
+    });
+    var data = await res.json();
+    var text = (data.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("\n");
+    text = text.replace(/```json|```/g,"").trim();
+    var jsonStart = text.indexOf("{"), jsonEnd = text.lastIndexOf("}");
+    if(jsonStart>=0 && jsonEnd>=0) text = text.substring(jsonStart, jsonEnd+1);
+    var d = JSON.parse(text);
+    applyData(d);
+    setStatus("✅ CMR заповнено. Перевір і допиши транспортні дані (CMR №, авто, перевізник).","ok");
+  }catch(e){
+    setStatus("Помилка розпізнавання: " + e.message + ". Перевір API-ключ або заповни вручну.","err");
+  }
+  document.getElementById("extract-btn").disabled = false;
+}
+
+function setV(id,val){ var e=document.getElementById(id); if(e && val) e.value=val; }
+function applyData(d){
+  setV("f-sender", d.sender); setV("f-sender2", d.sender);
+  setV("f-consignee", d.consignee);
+  setV("f-delivery", d.delivery);
+  setV("f-loading", d.loading);
+  setV("f-docs", d.docs);
+  setV("f-marks", d.marks);
+  setV("f-packages", d.packages);
+  setV("f-packing", d.packing);
+  setV("f-goods", d.goods);
+  setV("f-weight", d.weight);
+  setV("f-volume", d.volume);
+}
+
+/* ============ Demo / reset ============ */
+function fillSample(){
+  applyData({
+    sender:"ATAK EXPORT TEKSTİL SANAYİ Ve TİCARET LTD.\n4. Organize Sanayi Bölgesi OFM karşısI\nGaziler Mah. Yavuzeli Yolu Cad. No: 78/A\nŞehitkamil/Gaziantep, Turkey",
+    consignee:"Garni Rechi Limited company\nUKRAINE, 25012, Kirovohrad Oblast, Kropovnytsky\nYevhen Chykalenko Street, 1A, room 423",
+    delivery:"Kropovnytsky, UKRAINE",
+    loading:"Kahramanmaraş, Turkey",
+    docs:"Invoice No ATT2026000000087 dtd 30.06.2026",
+    packages:"366 pack", weight:"8299.19 KG", goods:""
+  });
+  setV("f-cmrnr","30062026-2");
+  setV("f-carrier","АН1214КН/АН7202ХМ");
+  setV("f-plates","АН1214КН/АН7202ХМ");
+  setV("f-estplace","Kahramanmaraş, Turkey");
+  setV("f-estdate","30/06/2026");
+  setStatus("Завантажено демо-приклад.","ok");
+}
+
+function resetAll(){
+  if(!confirm("Очистити всі поля та завантажені файли?")) return;
+  files = {}; renderSlots();
+  document.querySelectorAll(".cmr-grid input, .cmr-grid textarea").forEach(function(el){
+    if(el.type==="checkbox") el.checked=false; else el.value="";
+  });
+  setStatus("");
+}
+
+/* init */
+document.getElementById("slot-inp") || (function(){
+  var inp = document.createElement("input");
+  inp.type="file"; inp.id="slot-inp"; inp.accept="image/*,.pdf,.heic,.heif"; inp.style.display="none";
+  inp.onchange=function(){ handleSlotFile(this.files[0]); };
+  document.body.appendChild(inp);
+})();
+renderSlots();
+</script>
+</body>
+</html>
