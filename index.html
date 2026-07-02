@@ -479,19 +479,17 @@ function setStatus(msg, cls){
   el.innerHTML = (cls==="work" ? "<span class='spinner'></span>" : "") + msg;
 }
 
-function buildContent(){
-  var content = [];
-  var labels = {invoice:"ІНВОЙС", packing:"ПАКУВАЛЬНИЙ ЛИСТ", ex:"EX (експортна декларація)", co:"CO (сертифікат походження)", efactura:"E-FACTURA"};
-  SLOT_DEFS.forEach(function(s){
-    var f = files[s.key];
-    if(!f) return;
-    content.push({type:"text", text:"=== ДОКУМЕНТ: " + labels[s.key] + " ==="});
-    if(f.mime.indexOf("pdf")>=0){
-      content.push({type:"document", source:{type:"base64", media_type:"application/pdf", data:f.b64}});
-    } else {
-      content.push({type:"image", source:{type:"base64", media_type:f.mime, data:f.b64}});
-    }
-  });
+var DOC_LABELS = {invoice:"ІНВОЙС", packing:"ПАКУВАЛЬНИЙ ЛИСТ", ex:"EX (експортна декларація)", co:"CO (сертифікат походження)", efactura:"E-FACTURA"};
+
+/* Контент для ОДНОГО документа (щоб не перевищити ліміт розміру запиту Vercel ~4.5МБ) */
+function buildContentOne(key){
+  var f = files[key];
+  var content = [{type:"text", text:"=== ДОКУМЕНТ: " + DOC_LABELS[key] + " ==="}];
+  if(f.mime.indexOf("pdf")>=0){
+    content.push({type:"document", source:{type:"base64", media_type:"application/pdf", data:f.b64}});
+  } else {
+    content.push({type:"image", source:{type:"base64", media_type:f.mime, data:f.b64}});
+  }
   content.push({type:"text", text:EXTRACT_PROMPT});
   return content;
 }
@@ -516,40 +514,65 @@ var EXTRACT_PROMPT =
 "}\n\n" +
 "Правила: числа/ваги бери з пакувального листа якщо є; відправника й товар — з інвойсу. Дати у форматі дд.мм.рррр. Нічого не вигадуй — якщо немає, лиши \"\".";
 
+/* Один запит = один документ (обходить ліміт розміру Vercel). Повертає розпарсений JSON. */
+async function extractOne(key){
+  var headers = {"Content-Type":"application/json"};
+  if(API_CONFIG.apiKey){
+    headers["x-api-key"]=API_CONFIG.apiKey;
+    headers["anthropic-version"]="2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"]="true";
+  }
+  var res = await fetch(API_CONFIG.endpoint,{
+    method:"POST", headers:headers,
+    body:JSON.stringify({
+      model:API_CONFIG.model, max_tokens:API_CONFIG.maxTokens,
+      messages:[{role:"user", content:buildContentOne(key)}]
+    })
+  });
+  var raw = await res.text();
+  if(res.status===413){ throw new Error("файл «" + files[key].name + "» завеликий. Стисни його або зроби чіткіше фото замість важкого PDF."); }
+  if(!res.ok){ throw new Error("сервер повернув " + res.status + (raw ? (": " + raw.slice(0,160)) : " (порожньо — ймовірно таймаут)")); }
+  if(!raw){ throw new Error("порожня відповідь (ймовірно таймаут). Спробуй чіткіший/менший файл."); }
+  var data = JSON.parse(raw);
+  if(data.error){ throw new Error((data.error.message||data.error) + ""); }
+  var text = (data.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("\n");
+  text = text.replace(/```json|```/g,"").trim();
+  var a = text.indexOf("{"), b = text.lastIndexOf("}");
+  if(a>=0 && b>=0) text = text.substring(a, b+1);
+  return JSON.parse(text);
+}
+
 async function runExtract(){
-  if(Object.keys(files).length===0){ setStatus("Спершу завантаж документи","err"); return; }
-  setStatus("Аналізую документи…","work");
+  // Порядок = пріоритет заповнення: інвойс дає відправника/товар, пакувальний — вагу/місця
+  var keys = SLOT_DEFS.map(function(s){return s.key;}).filter(function(k){return files[k];});
+  if(keys.length===0){ setStatus("Спершу завантаж документи","err"); return; }
   document.getElementById("extract-btn").disabled = true;
+  var merged = {}, docRefs = [], failed = [];
   try{
-    var headers = {"Content-Type":"application/json"};
-    if(API_CONFIG.apiKey){
-      headers["x-api-key"]=API_CONFIG.apiKey;
-      headers["anthropic-version"]="2023-06-01";
-      headers["anthropic-dangerous-direct-browser-access"]="true"; // дозволяє виклик з браузера
+    for(var i=0;i<keys.length;i++){
+      var key = keys[i];
+      setStatus("Аналізую " + DOC_LABELS[key] + " (" + (i+1) + "/" + keys.length + ")…","work");
+      var d;
+      try { d = await extractOne(key); }
+      catch(e){ failed.push(DOC_LABELS[key] + ": " + e.message); continue; }
+      if(d.docs) docRefs.push(d.docs);
+      // Заповнюємо тільки порожні поля — ранній документ у списку має пріоритет
+      Object.keys(d).forEach(function(f){
+        if(f==="docs") return;
+        if(d[f] && !merged[f]) merged[f] = d[f];
+      });
     }
-    var res = await fetch(API_CONFIG.endpoint,{
-      method:"POST", headers:headers,
-      body:JSON.stringify({
-        model:API_CONFIG.model, max_tokens:API_CONFIG.maxTokens,
-        messages:[{role:"user", content:buildContent()}]
-      })
-    });
-    var raw = await res.text();
-    if(!res.ok){
-      throw new Error("сервер повернув " + res.status + (raw ? (": " + raw.slice(0,180)) : " (порожньо — ймовірно таймаут)"));
+    if(docRefs.length) merged.docs = docRefs.join("; ");
+    applyData(merged);
+    if(failed.length && Object.keys(merged).length){
+      setStatus("⚠️ Частково заповнено. Не вдалось: " + failed.join(" | "),"err");
+    } else if(failed.length){
+      setStatus("Помилка розпізнавання: " + failed.join(" | "),"err");
+    } else {
+      setStatus("✅ CMR заповнено. Перевір і допиши транспортні дані (CMR №, авто, перевізник).","ok");
     }
-    if(!raw){ throw new Error("порожня відповідь (ймовірно таймаут аналізу). Спробуй менше документів за раз."); }
-    var data = JSON.parse(raw);
-    if(data.error){ throw new Error((data.error.message||data.error) + ""); }
-    var text = (data.content||[]).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("\n");
-    text = text.replace(/```json|```/g,"").trim();
-    var jsonStart = text.indexOf("{"), jsonEnd = text.lastIndexOf("}");
-    if(jsonStart>=0 && jsonEnd>=0) text = text.substring(jsonStart, jsonEnd+1);
-    var d = JSON.parse(text);
-    applyData(d);
-    setStatus("✅ CMR заповнено. Перевір і допиши транспортні дані (CMR №, авто, перевізник).","ok");
   }catch(e){
-    setStatus("Помилка розпізнавання: " + e.message + ". Перевір API-ключ або заповни вручну.","err");
+    setStatus("Помилка розпізнавання: " + e.message,"err");
   }
   document.getElementById("extract-btn").disabled = false;
 }
