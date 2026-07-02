@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DocCreator — CMR</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a2e}
@@ -147,21 +148,17 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 1 + header -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">1</span><span class="lbl">Відправник (ім'я, адреса, країна)<span class="de"> Absender (Name, Anschrift, Land)</span></span>
+          <span class="bn">1</span><span class="lbl">Відправник (найменування, адреса, країна)<span class="de"> Sender (name, address, country)</span></span>
           <textarea id="f-sender" rows="4"></textarea>
         </td>
         <td class="cell-pad" style="text-align:center">
           <div class="cmr-head">
-            <b>Міжнародний</b> Сировинні та транспортні послуги рахунок<br>
-            <b>Міжнародний</b> Товарно-транспортна
+            <b>Міжнародна товарно-транспортна накладна</b><br>
+            <i>International Consignment Note</i>
           </div>
-          <div style="margin:4px 0">
-            <span class="cmr-logo">CMR</span>
-            <span class="cmr-nr">Nr.<input id="f-cmrnr" placeholder="________"></span>
-          </div>
-          <div class="boiler">
-            Таке транспортування, незважаючи на для будь-яких інших договорів здійснюється відповідно до з умовами Конвенції про Договір Міжнародні автомобільні перевезення.
-            <i>Diese Beförderung unterliegt trotz einer gegenteiligen Abmachung den Bestimmungen des Übereinkommens über den Beförderungsvertrag im internat. Straßengüterverkehr (CMR)</i>
+          <div style="margin:6px 0;display:flex;align-items:center;justify-content:center;gap:8px">
+            <input id="f-cmrnr" placeholder="__________" style="width:120px;font-size:13px;font-weight:700;color:#c00;border-bottom:1px solid #c00;text-align:center">
+            <span style="border:2px solid #c00;border-radius:20px;padding:2px 12px;font-weight:700;font-size:15px;color:#c00">CMR</span>
           </div>
         </td>
       </tr>
@@ -169,11 +166,11 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 2 + box 16 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">2</span><span class="lbl">Одержувач (ім'я, адреса, країна)<span class="de"> Empfänger (Name, Anschrift, Land)</span></span>
+          <span class="bn">2</span><span class="lbl">Одержувач (найменування, адреса, країна)<span class="de"> Consignee (name, address, country)</span></span>
           <textarea id="f-consignee" rows="4"></textarea>
         </td>
         <td class="cell-pad">
-          <span class="bn">16</span><span class="lbl">Перевізник (назва, адреса, країна)<span class="de"> Frachtführer (Name, Anschrift, Land)</span></span>
+          <span class="bn">16</span><span class="lbl">Перевізник (найменування, адреса, країна)<span class="de"> Carrier (name, address, country)</span></span>
           <textarea id="f-carrier" rows="4"></textarea>
         </td>
       </tr>
@@ -181,11 +178,12 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 3 + box 17 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">3</span><span class="lbl">Місце вивантаження вантажу<span class="de"> Auslieferungsort des Gutes</span></span>
-          <input id="f-delivery">
+          <span class="bn">3</span><span class="lbl">Місце розвантаження вантажу<span class="de"> Place of delivery of the goods</span></span>
+          <div style="display:flex;gap:4px;align-items:center"><span class="lbl" style="display:inline;min-width:64px">Місце/Place</span><input id="f-del-mesto"></div>
+          <div style="display:flex;gap:4px;align-items:center"><span class="lbl" style="display:inline;min-width:64px">Країна/Country</span><input id="f-del-strana"></div>
         </td>
         <td class="cell-pad">
-          <span class="bn">17</span><span class="lbl">Наступний перевізник (назва, адреса, країна)<span class="de"> Nachfolgende Frachtführer</span></span>
+          <span class="bn">17</span><span class="lbl">Наступний перевізник (найменування, адреса, країна)<span class="de"> Successive carrier (name, address, country)</span></span>
           <input id="f-nextcarrier">
         </td>
       </tr>
@@ -193,19 +191,21 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 4 + box 18 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">4</span><span class="lbl">Місце і дата завантаження вантажу<span class="de"> Ort und Tag der Übernahme des Gutes</span></span>
-          <input id="f-loading">
+          <span class="bn">4</span><span class="lbl">Місце і дата завантаження вантажу<span class="de"> Place and date of taking over the goods</span></span>
+          <div style="display:flex;gap:4px;align-items:center"><span class="lbl" style="display:inline;min-width:64px">Місце/Place</span><input id="f-load-mesto"></div>
+          <div style="display:flex;gap:4px;align-items:center"><span class="lbl" style="display:inline;min-width:64px">Країна/Country</span><input id="f-load-strana"></div>
+          <div style="display:flex;gap:4px;align-items:center"><span class="lbl" style="display:inline;min-width:64px">Дата/Date</span><input id="f-load-date"></div>
         </td>
         <td class="cell-pad">
-          <span class="bn">18</span><span class="lbl">Бронювання та зауваження перевізника<span class="de"> Vorbehalte und Bemerkungen der Frachtführer</span></span>
-          <textarea id="f-reserv" rows="2"></textarea>
+          <span class="bn">18</span><span class="lbl">Застереження та зауваження перевізника<span class="de"> Carrier's reservations and observations</span></span>
+          <textarea id="f-reserv" rows="3"></textarea>
         </td>
       </tr>
 
       <!-- Row: box 5 (spans) -->
       <tr>
         <td class="cell-pad" colspan="2">
-          <span class="bn">5</span><span class="lbl" style="display:inline">Додані документи<span class="de"> Beigefügte Dokumente</span></span>
+          <span class="bn">5</span><span class="lbl" style="display:inline">Додані документи<span class="de"> Documents attached</span></span>
           <textarea id="f-docs" rows="2"></textarea>
         </td>
       </tr>
@@ -215,28 +215,28 @@ small.g{color:#6b7280;font-size:10px}
         <td colspan="2" style="padding:0">
           <table class="subgrid">
             <tr>
-              <td style="width:14%"><span class="bn">6</span>Знаки та номера<br><i>Kennzeichen u. Nummern</i></td>
-              <td style="width:11%"><span class="bn">7</span>К-сть місць<br><i>Anzahl Packstücke</i></td>
-              <td style="width:12%"><span class="bn">8</span>Вид упаковки<br><i>Art der Verpackung</i></td>
-              <td style="width:25%"><span class="bn">9</span>Назва вантажу<br><i>Bezeichnung des Gutes</i></td>
-              <td style="width:10%"><span class="bn">10</span>Статист.№<br><i>Statistik-Nr.</i></td>
-              <td style="width:14%"><span class="bn">11</span>Вага брутто, кг<br><i>Bruttogew., kg</i></td>
-              <td style="width:14%"><span class="bn">12</span>Об'єм, м3<br><i>Umfang in m3</i></td>
+              <td style="width:13%"><span class="bn">6</span>Знаки та номери<br><i>Marks and numbers</i></td>
+              <td style="width:11%"><span class="bn">7</span>Кількість місць<br><i>Number of packages</i></td>
+              <td style="width:12%"><span class="bn">8</span>Вид упаковки<br><i>Method of packing</i></td>
+              <td style="width:26%"><span class="bn">9</span>Найменування вантажу<br><i>Nature of the goods</i></td>
+              <td style="width:10%"><span class="bn">10</span>Статист. №<br><i>Statistical No.</i></td>
+              <td style="width:14%"><span class="bn">11</span>Вага брутто, кг<br><i>Gross weight, kg</i></td>
+              <td style="width:14%"><span class="bn">12</span>Об'єм, м³<br><i>Volume, m³</i></td>
             </tr>
             <tr>
-              <td><textarea id="f-marks" rows="3"></textarea></td>
-              <td><textarea id="f-packages" rows="3"></textarea></td>
-              <td><textarea id="f-packing" rows="3"></textarea></td>
-              <td><textarea id="f-goods" rows="3"></textarea></td>
-              <td><textarea id="f-stat" rows="3"></textarea></td>
-              <td><textarea id="f-weight" rows="3"></textarea></td>
-              <td><textarea id="f-volume" rows="3"></textarea></td>
+              <td><textarea id="f-marks" rows="4"></textarea></td>
+              <td><textarea id="f-packages" rows="4"></textarea></td>
+              <td><textarea id="f-packing" rows="4"></textarea></td>
+              <td><textarea id="f-goods" rows="4"></textarea></td>
+              <td><textarea id="f-stat" rows="4"></textarea></td>
+              <td><textarea id="f-weight" rows="4"></textarea></td>
+              <td><textarea id="f-volume" rows="4"></textarea></td>
             </tr>
             <tr>
               <td colspan="7" style="padding:0">
                 <table class="subgrid"><tr>
-                  <td style="width:25%">Клас <i>Klasse</i></td><td style="width:25%">Цифра <i>Ziffer</i></td>
-                  <td style="width:25%">Буква <i>Buchstabe</i></td><td style="width:25%">ДОПОЛ. ADR</td>
+                  <td style="width:25%">Клас <i>Class</i></td><td style="width:25%">Цифра <i>Number</i></td>
+                  <td style="width:25%">Буква <i>Letter</i></td><td style="width:25%">ДОПНВ ADR</td>
                 </tr></table>
               </td>
             </tr>
@@ -247,40 +247,41 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 13 + box 19 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">13</span><span class="lbl">Інструкції вантажовідправника (митна та ін. обробка)<span class="de"> Anweisungen des Absenders</span></span>
-          <textarea id="f-instr" rows="6"></textarea>
+          <span class="bn">13</span><span class="lbl">Вказівки відправника (митне та інше оформлення)<span class="de"> Sender's instructions (customs and other formalities)</span></span>
+          <textarea id="f-instr" rows="7"></textarea>
         </td>
         <td style="padding:0">
           <table class="pay-tbl">
             <tr>
-              <td colspan="2"><span class="bn">19</span>Підлягає оплаті <i>Zu zahlen vom</i></td>
-              <td>Відправника<br><i>Absender</i></td><td>Валюта<br><i>Währung</i></td><td>Одержувач<br><i>Empfänger</i></td>
+              <td colspan="2"><span class="bn">19</span>Підлягає оплаті <i>To be paid by</i></td>
+              <td>Відправник<br><i>Sender</i></td><td>Валюта<br><i>Currency</i></td><td>Одержувач<br><i>Consignee</i></td>
             </tr>
-            <tr><td colspan="2">Ставка <i>Fracht</i></td><td><input></td><td><input></td><td><input></td></tr>
-            <tr><td colspan="2">Скидки <i>Ermäßigungen</i></td><td><input></td><td><input></td><td><input></td></tr>
-            <tr><td colspan="2">Різниця <i>Zwischensumme</i></td><td><input></td><td><input></td><td><input></td></tr>
-            <tr><td colspan="2">Додаткові збори <i>Nebengebühren</i></td><td><input></td><td><input></td><td><input></td></tr>
-            <tr><td colspan="2">Інше <i>Sonstiges</i></td><td><input></td><td><input></td><td><input></td></tr>
-            <tr><td colspan="2">Всього до оплати <i>Zu zahlende Ges.-Su.</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Ставка <i>Freight</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Знижки <i>Deductions</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Різниця <i>Subtotal</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Надбавки <i>Surcharges</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Додаткові збори <i>Supplementary charges</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Інші <i>Other</i></td><td><input></td><td><input></td><td><input></td></tr>
+            <tr><td colspan="2">Разом до оплати <i>Total amount payable</i></td><td><input></td><td><input></td><td><input></td></tr>
           </table>
         </td>
       </tr>
 
-      <!-- Row: box 14 spans / placed left, 20 right -->
+      <!-- Row: box 14 / 15 + 20 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">14</span><span class="lbl" style="display:inline">Повернення<span class="de"> Rückerstattung</span></span>
+          <span class="bn">14</span><span class="lbl" style="display:inline">Повернення<span class="de"> Refund</span></span>
           <input id="f-return">
           <div style="margin-top:4px">
-            <span class="bn">15</span><span class="lbl" style="display:inline">Умови оплати<span class="de"> Frachtzahlungsanweisungen</span></span>
+            <span class="bn">15</span><span class="lbl" style="display:inline">Умови оплати<span class="de"> Instructions for payment of carriage</span></span>
             <div class="frei">
-              <label><input type="checkbox" class="chk" id="f-frei"> франко <i>Frei</i></label>
-              <label><input type="checkbox" class="chk" id="f-unfrei"> нефранко <i>Unfrei</i></label>
+              <label><input type="checkbox" class="chk" id="f-frei"> франко <i>Prepaid</i></label>
+              <label><input type="checkbox" class="chk" id="f-unfrei"> нефранко <i>To be paid</i></label>
             </div>
           </div>
         </td>
         <td class="cell-pad">
-          <span class="bn">20</span><span class="lbl">Спеціальні узгоджені умови<span class="de"> Besondere Vereinbarungen</span></span>
+          <span class="bn">20</span><span class="lbl">Особливі узгоджені умови<span class="de"> Special agreements</span></span>
           <textarea id="f-special" rows="5"></textarea>
         </td>
       </tr>
@@ -288,25 +289,25 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 21 + 24 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">21</span><span class="lbl" style="display:inline">Складено в <span class="de">Ausgefertigt in</span></span>
-          <input id="f-estplace" placeholder="місто, країна">
-          <div style="margin-top:3px"><span class="lbl" style="display:inline">Дата <span class="de">am</span></span>
-          <input id="f-estdate" placeholder="дд/мм/рррр"></div>
+          <span class="bn">21</span><span class="lbl" style="display:inline">Складено в <span class="de">Established in</span></span>
+          <input id="f-estplace" placeholder="city, country">
+          <div style="margin-top:3px"><span class="lbl" style="display:inline">Дата <span class="de">on</span></span>
+          <input id="f-estdate" placeholder="dd/mm/yyyy"></div>
         </td>
         <td class="cell-pad">
-          <span class="bn">24</span><span class="lbl">Вантаж отримано&nbsp;&nbsp;&nbsp;&nbsp;Дата<span class="de"> Gut empfangen&nbsp;&nbsp;Datum</span></span>
+          <span class="bn">24</span><span class="lbl">Вантаж отримано&nbsp;&nbsp;&nbsp;&nbsp;Дата<span class="de"> Goods received&nbsp;&nbsp;Date</span></span>
           <div style="height:38px"></div>
         </td>
       </tr>
 
-      <!-- Row: box 22 signature -->
+      <!-- Row: box 22 + 23 signature -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">22</span><span class="lbl">Відправник (назва, адреса, країна)<span class="de"> Absender (Name, Anschrift, Land)</span></span>
+          <span class="bn">22</span><span class="lbl">Підпис та штамп відправника<span class="de"> Signature and stamp of the sender</span></span>
           <textarea id="f-sender2" rows="4"></textarea>
         </td>
         <td class="cell-pad">
-          <span class="bn">23</span><span class="lbl">Перевізник<span class="de"> Frachtführer</span></span>
+          <span class="bn">23</span><span class="lbl">Підпис та штамп перевізника<span class="de"> Signature and stamp of the carrier</span></span>
           <div style="height:54px"></div>
         </td>
       </tr>
@@ -314,11 +315,11 @@ small.g{color:#6b7280;font-size:10px}
       <!-- Row: box 25 + 26 -->
       <tr>
         <td class="cell-pad">
-          <span class="bn">25</span><span class="lbl">Реєстрац. номер / Amtliches Kennzeichen — Тягач/Kfz · Полупричіп/Anhänger</span>
+          <span class="bn">25</span><span class="lbl">Реєстрац. номер / Registration No. — Тягач/Tractor unit · Напівпричіп/Trailer</span>
           <input id="f-plates">
         </td>
         <td class="cell-pad">
-          <span class="bn">26</span><span class="lbl">Марка / Typ — Тягач/Kfz · Полупричіп/Anhänger</span>
+          <span class="bn">26</span><span class="lbl">Марка / Make — Тягач/Tractor unit · Напівпричіп/Trailer</span>
           <input id="f-make">
         </td>
       </tr>
@@ -403,13 +404,39 @@ function imageToJpeg(blob){
   });
 }
 
-/* Normalize ANY file: PDF stays PDF; any image (jpg/png/webp/gif/bmp/tiff/heic…) → JPEG */
+/* Рендер PDF у стиснені картинки-сторінки (щоб важкий PDF влазив у ліміт запиту) */
+async function pdfToBlocks(file){
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  var maxPages = Math.min(pdf.numPages, 12);
+  var blocks = [];
+  for(var p=1;p<=maxPages;p++){
+    var page = await pdf.getPage(p);
+    var base = page.getViewport({scale:1});
+    var scale = Math.min(2, 1560/Math.max(base.width, base.height));
+    var vp = page.getViewport({scale:scale});
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({canvasContext:ctx, viewport:vp}).promise;
+    blocks.push({type:"image", source:{type:"base64", media_type:"image/jpeg", data:canvas.toDataURL("image/jpeg",0.8).split(",")[1]}});
+  }
+  return blocks;
+}
+
+/* Normalize ANY file → масив готових content-блоків для API. PDF рендериться в картинки, фото → JPEG. */
 async function prepareFile(file){
   var name = file.name;
   var isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(name);
   if(isPdf){
+    if(window.pdfjsLib){
+      var blocks = await pdfToBlocks(file);
+      if(blocks.length) return {name:name, blocks:blocks};
+    }
+    // запасний варіант: якщо бібліотека не завантажилась — шлемо PDF як є
     var raw = await readFileB64(file);
-    return {name:name, b64:raw, mime:"application/pdf"};
+    return {name:name, blocks:[{type:"document", source:{type:"base64", media_type:"application/pdf", data:raw}}]};
   }
   var srcBlob = file;
   var isHeic = /heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(name);
@@ -419,7 +446,7 @@ async function prepareFile(file){
     if(Array.isArray(srcBlob)) srcBlob = srcBlob[0];
   }
   var jpeg = await imageToJpeg(srcBlob);
-  return {name:name, b64:jpeg, mime:"image/jpeg"};
+  return {name:name, blocks:[{type:"image", source:{type:"base64", media_type:"image/jpeg", data:jpeg}}]};
 }
 
 async function handleSlotFile(file){
@@ -481,38 +508,39 @@ function setStatus(msg, cls){
 
 var DOC_LABELS = {invoice:"ІНВОЙС", packing:"ПАКУВАЛЬНИЙ ЛИСТ", ex:"EX (експортна декларація)", co:"CO (сертифікат походження)", efactura:"E-FACTURA"};
 
-/* Контент для ОДНОГО документа (щоб не перевищити ліміт розміру запиту Vercel ~4.5МБ) */
+/* Контент для ОДНОГО документа (кожен запит малий — обходить ліміт розміру Vercel) */
 function buildContentOne(key){
   var f = files[key];
   var content = [{type:"text", text:"=== ДОКУМЕНТ: " + DOC_LABELS[key] + " ==="}];
-  if(f.mime.indexOf("pdf")>=0){
-    content.push({type:"document", source:{type:"base64", media_type:"application/pdf", data:f.b64}});
-  } else {
-    content.push({type:"image", source:{type:"base64", media_type:f.mime, data:f.b64}});
-  }
+  (f.blocks||[]).forEach(function(b){ content.push(b); });
   content.push({type:"text", text:EXTRACT_PROMPT});
   return content;
 }
 
 var EXTRACT_PROMPT =
-"Ти асистент логіста. Проаналізуй надані документи (інвойс, пакувальний лист, EX, CO, E-factura) і витягни дані для заповнення міжнародної товарно-транспортної накладної CMR.\n\n" +
-"Поверни ВИКЛЮЧНО валідний JSON без markdown, без пояснень, у такій структурі (порожнє поле = \"\"):\n" +
+"Ти асистент логіста. Проаналізуй наданий документ і витягни дані для заповнення міжнародної CMR-накладної.\n\n" +
+"КРИТИЧНІ ПРАВИЛА МОВИ:\n" +
+"1. ВСІ значення повертай ВИКЛЮЧНО латинськими літерами. Жодної кирилиці у відповіді.\n" +
+"2. Якщо в документі текст українською/російською (напр. назва складу, міста, вулиці) — транслітеруй його латиницею за стандартом (напр. «Соколівське» → \"Sokolivske\", «Кропивницький» → \"Kropovnytskyi\").\n" +
+"3. Поле goods (назва вантажу) — ТІЛЬКИ англійською мовою. Якщо опис іншою мовою, переклади англійською. Без українського/російського перекладу.\n\n" +
+"Поверни ВИКЛЮЧНО валідний JSON без markdown і пояснень (порожнє поле = \"\"):\n" +
 "{\n" +
-'  "sender": "повна назва, адреса, країна відправника/продавця",\n' +
-'  "consignee": "повна назва, адреса, країна одержувача/покупця",\n' +
-'  "delivery": "місто, країна вивантаження",\n' +
-'  "loading": "місто, країна завантаження",\n' +
-'  "docs": "перелік доданих документів: Invoice No ... dtd ..., EX/MRN ..., CO ..., E-factura ...",\n' +
-'  "marks": "знаки/маркування",\n' +
-'  "packages": "кількість місць (напр. 366 pack)",\n' +
-'  "packing": "вид упаковки",\n' +
-'  "goods": "назва/опис вантажу",\n' +
-'  "weight": "вага брутто в кг (напр. 8299.19 KG)",\n' +
-'  "volume": "обєм м3",\n' +
-'  "invoice_no": "номер інвойсу",\n' +
-'  "invoice_date": "дата інвойсу"\n' +
+'  "sender": "sender/seller: name, address, country (latin)",\n' +
+'  "consignee": "consignee/buyer: name, address, country (latin)",\n' +
+'  "delivery": "повна адреса місця вивантаження (latin)",\n' +
+'  "loading": "повна адреса місця завантаження (latin)",\n' +
+'  "loading_date": "дата завантаження dd/mm/yyyy",\n' +
+'  "docs": "attached docs: INVOICE NO. ... dtd ..., EX/MRN ..., CO ..., E-factura ...",\n' +
+'  "marks": "marks/numbers (latin)",\n' +
+'  "packages": "к-сть місць, напр. 1520 CARTONS",\n' +
+'  "packing": "тип упаковки (latin)",\n' +
+'  "goods": "goods description IN ENGLISH ONLY",\n' +
+'  "weight": "вага брутто кг, напр. 11880.00 kg",\n' +
+'  "volume": "обєм м3, напр. 76.81",\n' +
+'  "invoice_no": "invoice number",\n' +
+'  "invoice_date": "invoice date dd/mm/yyyy"\n' +
 "}\n\n" +
-"Правила: числа/ваги бери з пакувального листа якщо є; відправника й товар — з інвойсу. Дати у форматі дд.мм.рррр. Нічого не вигадуй — якщо немає, лиши \"\".";
+"Правила даних: вагу/місця/обєм бери з пакувального листа якщо є; відправника й товар — з інвойсу. Нічого не вигадуй — якщо немає, лиши \"\".";
 
 /* Один запит = один документ (обходить ліміт розміру Vercel). Повертає розпарсений JSON. */
 async function extractOne(key){
@@ -577,12 +605,34 @@ async function runExtract(){
   document.getElementById("extract-btn").disabled = false;
 }
 
-function setV(id,val){ var e=document.getElementById(id); if(e && val) e.value=val; }
+/* Страхувальна транслітерація кирилиці → латиниця (якщо модель раптом поверне кирилицю) */
+var TRANSLIT = {
+  "а":"a","б":"b","в":"v","г":"h","ґ":"g","д":"d","е":"e","є":"ie","ж":"zh","з":"z",
+  "и":"y","і":"i","ї":"i","й":"i","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p",
+  "р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch",
+  "ь":"","ю":"iu","я":"ia","ё":"e","ы":"y","э":"e","ъ":""
+};
+function translit(s){
+  if(!s) return s;
+  if(!/[а-яёіїєґ]/i.test(s)) return s; // немає кирилиці — не чіпаємо
+  return s.split("").map(function(ch){
+    var lower = ch.toLowerCase();
+    if(TRANSLIT.hasOwnProperty(lower)){
+      var r = TRANSLIT[lower];
+      return ch === lower ? r : (r.charAt(0).toUpperCase() + r.slice(1));
+    }
+    return ch;
+  }).join("");
+}
+
+function setV(id,val){ var e=document.getElementById(id); if(e && val) e.value=translit(val); }
 function applyData(d){
   setV("f-sender", d.sender); setV("f-sender2", d.sender);
   setV("f-consignee", d.consignee);
-  setV("f-delivery", d.delivery);
-  setV("f-loading", d.loading);
+  setV("f-carrier", d.carrier);
+  setV("f-del-strana", d.delivery);
+  setV("f-load-strana", d.loading);
+  setV("f-load-date", d.loading_date);
   setV("f-docs", d.docs);
   setV("f-marks", d.marks);
   setV("f-packages", d.packages);
@@ -595,18 +645,20 @@ function applyData(d){
 /* ============ Demo / reset ============ */
 function fillSample(){
   applyData({
-    sender:"ATAK EXPORT TEKSTİL SANAYİ Ve TİCARET LTD.\n4. Organize Sanayi Bölgesi OFM karşısI\nGaziler Mah. Yavuzeli Yolu Cad. No: 78/A\nŞehitkamil/Gaziantep, Turkey",
-    consignee:"Garni Rechi Limited company\nUKRAINE, 25012, Kirovohrad Oblast, Kropovnytsky\nYevhen Chykalenko Street, 1A, room 423",
-    delivery:"Kropovnytsky, UKRAINE",
-    loading:"Kahramanmaraş, Turkey",
-    docs:"Invoice No ATT2026000000087 dtd 30.06.2026",
-    packages:"366 pack", weight:"8299.19 KG", goods:""
+    sender:"GUANGZHOU LUQIXIN IMPORT EXPORT LTD\nROOM 801 NO.1 TANGLE ROAD\nBAIYUN DISTRICT GUANGZHOU, CHINA",
+    consignee:"Garni Rechi Limited liability company\nUKRAINE, 25012, Kirovohrad Oblast, Kropovnytskyi\nYevhen Chykalenko Street, 1A, room 423",
+    delivery:"Sokolivske, Kirovohrad region UKRAINE",
+    loading:"TSL Bracia Benzynowa 50, 83-011 Gdansk, Poland",
+    docs:"INVOICE NO. 2026042401 dtd 24/04/2026",
+    packages:"1520 CARTONS",
+    goods:"MEN'S SHOES IN ASSORTMENT\nWOMEN'S SHOES IN ASSORTMENT",
+    weight:"11880.00 kg", volume:"76.81"
   });
-  setV("f-cmrnr","30062026-2");
-  setV("f-carrier","АН1214КН/АН7202ХМ");
-  setV("f-plates","АН1214КН/АН7202ХМ");
-  setV("f-estplace","Kahramanmaraş, Turkey");
-  setV("f-estdate","30/06/2026");
+  setV("f-cmrnr","30062026-01");
+  setV("f-carrier","AC5316HI/AC5369XF");
+  setV("f-plates","AC5316HI/AC5369XF");
+  setV("f-sender2","TSL Bracia Benzynowa 50, 83-011 Gdansk, Poland");
+  setV("f-estplace","83-011 Gdansk, Poland");
   setStatus("Завантажено демо-приклад.","ok");
 }
 
@@ -620,6 +672,9 @@ function resetAll(){
 }
 
 /* init */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
 document.getElementById("slot-inp") || (function(){
   var inp = document.createElement("input");
   inp.type="file"; inp.id="slot-inp"; inp.accept="image/*,.pdf,.heic,.heif"; inp.style.display="none";
