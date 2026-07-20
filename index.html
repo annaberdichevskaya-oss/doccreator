@@ -628,7 +628,7 @@ function applyData(d){
   setV("f-sender", d.sender); setV("f-sender2", d.sender);
   setV("f-consignee", d.consignee);
   setV("f-carrier", d.carrier);
-  setV("f-del-strana", d.delivery);
+  // Графа 3 (місце розвантаження) — фіксована юр. адреса Garni Rechi, не перетираємо розпізнаванням
   setV("f-load-strana", d.loading);
   setV("f-load-date", d.loading_date);
   setV("f-docs", d.docs);
@@ -699,6 +699,13 @@ function resetAll(){
     if(el.type==="checkbox") el.checked=false; else el.value="";
   });
   setStatus("");
+  setDefaults();
+}
+
+/* Постійні значення за замовчуванням (фіксований одержувач/місце розвантаження) */
+function setDefaults(){
+  setV("f-del-mesto", "Garni Rechi LLC, Yevhen Chykalenko Street, 1A, room 423, 25012, Kropyvnytskyi, Kirovohrad region");
+  setV("f-del-strana", "UKRAINE");
 }
 
 /* init */
@@ -712,6 +719,7 @@ document.getElementById("slot-inp") || (function(){
   document.body.appendChild(inp);
 })();
 renderSlots();
+setDefaults();
 </script>
 </body>
 </html>
