@@ -479,11 +479,11 @@ async function handleBulk(fileList){
     failed.length ? "err" : "ok");
 }
 function guessSlot(nm){
-  if(/invoice|інвойс|инвойс|факт/.test(nm) && !/e.?fact/.test(nm)) return "invoice";
-  if(/pack|пак/.test(nm)) return "packing";
-  if(/\bex\b|export|експорт|mrn/.test(nm)) return "ex";
-  if(/\bco\b|origin|походж|сертиф/.test(nm)) return "co";
   if(/e.?fact/.test(nm)) return "efactura";
+  if(/invoice|інвойс|инвойс|^inv|_inv/.test(nm)) return "invoice";
+  if(/pack|пак|\bpl\b|^pl[._-]|packing.?list|预录单|装箱/.test(nm)) return "packing";
+  if(/export|експорт|mrn|\bex\b|^ex[._-]|declar/.test(nm)) return "ex";
+  if(/origin|походж|сертиф|certif|\bco\b|^co[._-]/.test(nm)) return "co";
   return null;
 }
 function firstEmptySlot(){
@@ -523,22 +523,24 @@ var EXTRACT_PROMPT =
 "3. Поле goods (назва вантажу) — ТІЛЬКИ англійською мовою. Якщо опис іншою мовою, переклади англійською. Без українського/російського перекладу.\n\n" +
 "Поверни ВИКЛЮЧНО валідний JSON без markdown і пояснень (порожнє поле = \"\"):\n" +
 "{\n" +
-'  "sender": "sender/seller: name, address, country (latin)",\n' +
-'  "consignee": "consignee/buyer: name, address, country (latin)",\n' +
-'  "delivery": "повна адреса місця вивантаження (latin)",\n' +
-'  "loading": "повна адреса місця завантаження (latin)",\n' +
-'  "loading_date": "дата завантаження dd/mm/yyyy",\n' +
-'  "docs": "ТІЛЬКИ інвойс, без інших документів: INVOICE NO. ... dtd ...",\n' +
+'  "sender": "ВІДПРАВНИК/ПРОДАВЕЦЬ (Seller/Shipper): назва, адреса, країна (latin)",\n' +
+'  "consignee": "ОДЕРЖУВАЧ/ПОКУПЕЦЬ (Buyer/Consignee): назва, адреса, країна (latin)",\n' +
+'  "docs": "ТІЛЬКИ інвойс: INVOICE NO. <номер> dtd <dd/mm/yyyy>",\n' +
 '  "marks": "marks/numbers (latin)",\n' +
-'  "packages": "к-сть місць, напр. 1520 CARTONS",\n' +
+'  "packages": "к-сть місць з одиницею, напр. 1520 CARTONS",\n' +
 '  "packing": "тип упаковки (latin)",\n' +
 '  "goods": "goods description IN ENGLISH ONLY",\n' +
 '  "weight": "вага брутто кг, напр. 11880.00 kg",\n' +
 '  "volume": "обєм м3, напр. 76.81",\n' +
-'  "invoice_no": "invoice number",\n' +
-'  "invoice_date": "invoice date dd/mm/yyyy"\n' +
+'  "invoice_no": "номер інвойсу точно як у документі",\n' +
+'  "invoice_date": "дата інвойсу строго dd/mm/yyyy"\n' +
 "}\n\n" +
-"Правила даних: вагу/місця/обєм бери з пакувального листа якщо є; відправника й товар — з інвойсу. Нічого не вигадуй — якщо немає, лиши \"\".";
+"КРИТИЧНІ ПРАВИЛА ДАНИХ:\n" +
+"- Витягуй дані ВИКЛЮЧНО з наданого документа. Нічого не додумуй і не бери з пам'яті.\n" +
+"- Якщо поля немає саме в цьому документі — став \"\". Порожнє значення краще за вигадане.\n" +
+"- Номери й дати переписуй символ у символ. Рік не змінюй (2026 не перетворюй на 2020).\n" +
+"- Дати з формату 2026/6/4 перетворюй на 04/06/2026.\n" +
+"- Відправник = Seller/Shipper (НЕ покупець). Одержувач = Buyer/Consignee.";
 
 /* Один запит = один документ (обходить ліміт розміру Vercel). Повертає розпарсений JSON. */
 async function extractOne(key){
@@ -573,6 +575,15 @@ async function runExtract(){
   var keys = SLOT_DEFS.map(function(s){return s.key;}).filter(function(k){return files[k];});
   if(keys.length===0){ setStatus("Спершу завантаж документи","err"); return; }
   document.getElementById("extract-btn").disabled = true;
+/* Яке поле з якого документа брати (щоб дані не змішувались між документами) */
+var FIELD_OWNER = {
+  invoice:  ["sender","consignee","docs","invoice_no","invoice_date","goods"],
+  packing:  ["packages","weight","volume","marks","packing","goods"],
+  ex:       ["marks"],
+  co:       ["goods"],
+  efactura: []
+};
+
   var merged = {}, failed = [];
   try{
     for(var i=0;i<keys.length;i++){
@@ -581,11 +592,9 @@ async function runExtract(){
       var d;
       try { d = await extractOne(key); }
       catch(e){ failed.push(DOC_LABELS[key] + ": " + e.message); continue; }
-      // Графа 5 (додані документи) — ТІЛЬКИ з інвойсу
-      if(d.docs && key==="invoice") merged.docs = d.docs;
-      // Заповнюємо тільки порожні поля — ранній документ у списку має пріоритет
-      Object.keys(d).forEach(function(f){
-        if(f==="docs") return;
+      // Беремо ТІЛЬКИ ті поля, за які відповідає цей тип документа
+      var allowed = FIELD_OWNER[key] || [];
+      allowed.forEach(function(f){
         if(d[f] && !merged[f]) merged[f] = d[f];
       });
     }
@@ -628,9 +637,8 @@ function applyData(d){
   setV("f-sender", d.sender); setV("f-sender2", d.sender);
   setV("f-consignee", d.consignee);
   setV("f-carrier", d.carrier);
-  // Графа 3 (місце розвантаження) — фіксована юр. адреса Garni Rechi, не перетираємо розпізнаванням
-  setV("f-load-strana", d.loading);
-  setV("f-load-date", d.loading_date);
+  // Графи 3 і 4 — фіксовані (розвантаження: Garni Rechi; завантаження: Польща, перетарка).
+  // Розпізнавання їх НЕ заповнює, щоб не підставляло порт відправлення з Китаю.
   setV("f-docs", d.docs);
   setV("f-marks", d.marks);
   setV("f-packages", d.packages);
@@ -704,8 +712,9 @@ function resetAll(){
 
 /* Постійні значення за замовчуванням (фіксований одержувач/місце розвантаження) */
 function setDefaults(){
-  setV("f-del-mesto", "Garni Rechi LLC, Yevhen Chykalenko Street, 1A, room 423, 25012, Kropyvnytskyi, Kirovohrad region");
+  setV("f-del-mesto", "Kropyvnytskyi, Kirovohrad region");
   setV("f-del-strana", "UKRAINE");
+  setV("f-load-strana", "POLAND");
 }
 
 /* init */
