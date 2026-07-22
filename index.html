@@ -49,6 +49,7 @@ header{background:#1a1a2e;padding:12px 20px;display:flex;align-items:center;just
 .btn{border:none;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600}
 .btn-blue{background:#3b82f6;color:#fff}.btn-blue:hover{background:#2563eb}
 .btn-green{background:#16a34a;color:#fff}.btn-green:hover{background:#15803d}
+.btn-red{background:#fff;color:#dc2626;border:1px solid #fca5a5}.btn-red:hover{background:#fee2e2}
 .btn-blue:disabled{background:#cbd5e1;cursor:not-allowed}
 .btn-gray{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}.btn-gray:hover{background:#e5e7eb}
 .status{font-size:12px;color:#6b7280}
@@ -133,12 +134,14 @@ small.g{color:#6b7280;font-size:10px}
     <div class="actions-row">
       <button class="btn btn-blue" id="extract-btn" onclick="runExtract()" disabled>✨ Розпізнати та заповнити CMR</button>
       <button class="btn btn-gray" onclick="fillSample()">Приклад (демо)</button>
+      <button class="btn btn-red" onclick="resetAll()">🗑 Очистити все</button>
       <span class="status" id="status"></span>
     </div>
   </div>
 
   <!-- CMR FORM -->
   <div class="cmr-toolbar">
+    <button class="btn btn-red" onclick="resetAll()">🗑 Очистити все</button>
     <button class="btn btn-green" onclick="downloadWord()">⬇️ Завантажити CMR (Word)</button>
   </div>
 
@@ -701,13 +704,20 @@ function downloadWord(){
 }
 
 function resetAll(){
-  if(!confirm("Очистити всі поля та завантажені файли?")) return;
-  files = {}; renderSlots();
-  document.querySelectorAll(".cmr-grid input, .cmr-grid textarea").forEach(function(el){
+  if(!confirm("Очистити всі завантажені файли та всі поля CMR?")) return;
+  // 1) файли з усіх комірок
+  files = {}; _pendingSlot = null;
+  var bulk = document.getElementById("bulk-inp"); if(bulk) bulk.value = "";
+  var slotInp = document.getElementById("slot-inp"); if(slotInp) slotInp.value = "";
+  renderSlots();
+  // 2) усі поля бланка CMR
+  document.querySelectorAll("#cmr-sheet input, #cmr-sheet textarea").forEach(function(el){
     if(el.type==="checkbox") el.checked=false; else el.value="";
   });
+  // 3) повернути постійні значення (графи 3 і 4)
   setStatus("");
   setDefaults();
+  window.scrollTo({top:0, behavior:"smooth"});
 }
 
 /* Постійні значення за замовчуванням (фіксований одержувач/місце розвантаження) */
