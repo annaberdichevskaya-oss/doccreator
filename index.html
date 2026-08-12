@@ -6,6 +6,7 @@
 <title>DocCreator — CMR</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a2e}
@@ -140,6 +141,19 @@ small.g{color:#6b7280;font-size:10px}
   </div>
 
   <!-- CMR FORM -->
+  <!-- UB LOOKUP -->
+  <div class="upload-panel">
+    <div class="panel-title">🚚 Дані авто з UB-файлу</div>
+    <div class="panel-sub">Введи номер контейнера — підтягнуться склад завантаження (графи 4 і 21) та номери авто (графи 16 і 25).</div>
+    <div class="actions-row">
+      <input class="search-box" id="ub-container" placeholder="Номер контейнера, напр. CMAU7104850" style="max-width:280px">
+      <button class="btn btn-blue" onclick="ubLookup()">🔎 Підтягнути дані авто</button>
+      <button class="btn btn-gray" onclick="document.getElementById('ub-file').click()">📂 Завантажити UB-файл</button>
+      <input type="file" id="ub-file" accept=".xlsx,.xls" style="display:none" onchange="ubLoadFile(this.files[0])">
+      <span class="status" id="ub-status"></span>
+    </div>
+  </div>
+
   <div class="cmr-toolbar">
     <button class="btn btn-red" onclick="resetAll()">🗑 Очистити все</button>
     <button class="btn btn-green" onclick="downloadWord()">⬇️ Завантажити CMR (Word)</button>
@@ -581,8 +595,8 @@ async function runExtract(){
 /* Яке поле з якого документа брати (щоб дані не змішувались між документами) */
 var FIELD_OWNER = {
   invoice:  ["sender","consignee","docs","invoice_no","invoice_date","goods"],
-  packing:  ["packages","weight","volume","marks","packing","goods"],
-  ex:       ["marks"],
+  packing:  ["packages","weight","volume","packing","goods"],
+  ex:       [],
   co:       ["goods"],
   efactura: []
 };
@@ -637,13 +651,14 @@ function translit(s){
 
 function setV(id,val){ var e=document.getElementById(id); if(e && val) e.value=translit(val); }
 function applyData(d){
-  setV("f-sender", d.sender); setV("f-sender2", d.sender);
+  setV("f-sender", d.sender);
+  // Графа 22 (підпис/штамп відправника) — НЕ заповнюємо автоматично, лишається порожньою.
   setV("f-consignee", d.consignee);
   setV("f-carrier", d.carrier);
   // Графи 3 і 4 — фіксовані (розвантаження: Garni Rechi; завантаження: Польща, перетарка).
   // Розпізнавання їх НЕ заповнює, щоб не підставляло порт відправлення з Китаю.
   setV("f-docs", d.docs);
-  setV("f-marks", d.marks);
+  // Графа 6 (знаки та номери) — лишається порожньою.
   setV("f-packages", d.packages);
   setV("f-packing", d.packing);
   setV("f-goods", d.goods);
@@ -666,7 +681,6 @@ function fillSample(){
   setV("f-cmrnr","30062026-01");
   setV("f-carrier","AC5316HI/AC5369XF");
   setV("f-plates","AC5316HI/AC5369XF");
-  setV("f-sender2","TSL Bracia Benzynowa 50, 83-011 Gdansk, Poland");
   setV("f-estplace","83-011 Gdansk, Poland");
   setStatus("Завантажено демо-приклад.","ok");
 }
@@ -678,12 +692,15 @@ function downloadWord(){
   var sheet = document.getElementById("cmr-sheet");
   var clone = sheet.cloneNode(true);
   // Поля вводу → звичайний текст (щоб значення потрапили у Word)
+  var plateFields = {"f-plates":1, "f-carrier":1};  // графи 25 і 16 — тільки візуальна транслітерація
   clone.querySelectorAll("input, textarea").forEach(function(el){
     var span = document.createElement("span");
     if(el.type === "checkbox"){
       span.textContent = el.checked ? "X" : "";
     } else {
-      span.innerHTML = escHtml(translit(el.value||"")).replace(/\n/g,"<br>");
+      var raw = el.value||"";
+      var out = plateFields[el.id] ? plateTranslit(raw) : translit(raw);
+      span.innerHTML = escHtml(out).replace(/\n/g,"<br>");
     }
     el.parentNode.replaceChild(span, el);
   });
@@ -718,6 +735,108 @@ function resetAll(){
   setStatus("");
   setDefaults();
   window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ============ UB-файл: дані авто ============ */
+var UB_SHEET = "FCL";           // аркуш ' FCL '
+var UB_COL = {container:4, warehouse:22, auto:26};  // E, W, AA (0-based)
+var _ubRows = null;             // кеш розібраного файлу
+
+function ubStatus(msg, cls){
+  var el = document.getElementById("ub-status");
+  el.className = "status " + (cls||"");
+  el.innerHTML = (cls==="work" ? "<span class='spinner'></span>" : "") + msg;
+}
+
+/* Візуальна транслітерація АВТОНОМЕРІВ: ВС1046РХ → BC1046PX (не фонетична!) */
+var PLATE_MAP = {"А":"A","В":"B","С":"C","Е":"E","Н":"H","І":"I","К":"K","М":"M","О":"O","Р":"P","Т":"T","Х":"X","У":"Y","Ї":"I","Є":"E","Ґ":"G"};
+function plateTranslit(s){
+  return (s||"").toUpperCase().split("").map(function(ch){
+    return PLATE_MAP.hasOwnProperty(ch) ? PLATE_MAP[ch] : ch;
+  }).join("");
+}
+
+/* З «брудної» комірки AA лишаємо ТІЛЬКИ номери: 'AC3817BX/AC4694XP, Ягодин\nВодій...' → 'AC3817BX/AC4694XP' */
+function extractPlates(raw){
+  if(!raw) return "";
+  var txt = String(raw).replace(/["']/g," ");
+  var L = "A-ZА-ЯІЇЄҐ";
+  var one = "[" + L + "]{2}\\s?\\d{4}\\s?[" + L + "]{2}";
+  var pair = new RegExp("(" + one + ")\\s*/\\s*(" + one + ")", "i");
+  var m = txt.match(pair);
+  if(m) return plateTranslit(m[1].replace(/\s+/g,"")) + "/" + plateTranslit(m[2].replace(/\s+/g,""));
+  var single = txt.match(new RegExp(one, "i"));
+  return single ? plateTranslit(single[0].replace(/\s+/g,"")) : "";
+}
+
+/* Розібрати книгу → масив рядків потрібного аркуша */
+function ubParse(workbook){
+  var name = workbook.SheetNames.find(function(n){ return n.trim().toUpperCase() === UB_SHEET; });
+  if(!name) throw new Error("аркуш ' FCL ' не знайдено у файлі");
+  return XLSX.utils.sheet_to_json(workbook.Sheets[name], {header:1, defval:"", raw:false});
+}
+
+function ubLoadFile(file){
+  if(!file) return;
+  ubStatus("Читаю UB-файл…","work");
+  var r = new FileReader();
+  r.onload = function(e){
+    try{
+      _ubRows = ubParse(XLSX.read(new Uint8Array(e.target.result), {type:"array"}));
+      ubStatus("✅ UB-файл завантажено (" + _ubRows.length + " рядків). Введи номер контейнера.","ok");
+    }catch(err){ ubStatus("Помилка читання файлу: " + err.message,"err"); }
+  };
+  r.readAsArrayBuffer(file);
+}
+
+/* Спроба взяти файл із розшареного посилання (якщо налаштовано UB_FILE_URL на Vercel) */
+async function ubFetchShared(container){
+  var res = await fetch("/api/ub?container=" + encodeURIComponent(container));
+  var raw = await res.text();
+  if(!res.ok) throw new Error(raw ? raw.slice(0,140) : ("сервер повернув " + res.status));
+  var d = JSON.parse(raw);
+  if(d.error) throw new Error(d.error);
+  return d;
+}
+
+async function ubLookup(){
+  var cont = (document.getElementById("ub-container").value||"").trim();
+  if(!cont){ ubStatus("Введи номер контейнера","err"); return; }
+
+  // 1) якщо файл уже завантажений вручну — шукаємо локально
+  if(_ubRows){
+    var needle = cont.toUpperCase().replace(/\s+/g,"");
+    var row = _ubRows.find(function(r){
+      return String(r[UB_COL.container]||"").toUpperCase().replace(/\s+/g,"") === needle;
+    });
+    if(!row){ ubStatus("Контейнер «" + cont + "» не знайдено в UB-файлі","err"); return; }
+    ubApply(row[UB_COL.warehouse], row[UB_COL.auto]);
+    return;
+  }
+
+  // 2) інакше пробуємо розшарене посилання через проксі
+  ubStatus("Шукаю в UB-файлі…","work");
+  try{
+    var d = await ubFetchShared(cont);
+    ubApply(d.warehouse, d.auto);
+  }catch(e){
+    ubStatus("Не вдалось: " + e.message + ". Натисни «Завантажити UB-файл» і обери файл вручну.","err");
+  }
+}
+
+function ubApply(warehouse, auto){
+  var wh = String(warehouse||"").replace(/\s*\n\s*/g, ", ").trim();
+  var plates = extractPlates(auto);
+  if(wh){
+    setV("f-load-mesto", wh);   // графа 4 — місце завантаження
+    setV("f-estplace", wh);     // графа 21 — складено в
+  }
+  if(plates){
+    setV("f-plates", plates);   // графа 25 — реєстраційні номери
+    setV("f-carrier", plates);  // графа 16 — перевізник
+  }
+  if(!wh && !plates){ ubStatus("Рядок знайдено, але склад і авто в ньому порожні","err"); return; }
+  ubStatus("✅ Підтягнуто: " + (plates||"—") + (wh ? " · " + wh.slice(0,40) : ""),"ok");
 }
 
 /* Постійні значення за замовчуванням (фіксований одержувач/місце розвантаження) */
