@@ -2068,7 +2068,24 @@ function renderStatistics() {
 
   var AMBER = "#f59e0b", TEAL = "#0e7490", GRAY = "#d1d5db", GREEN = "#16a34a", PURPLE = "#6d28d9";
 
-  _statsCharts.avgCategory = new Chart(document.getElementById("chartAvgCategory"), {
+  function safeChart(key, canvasId, config) {
+    try {
+      var el = document.getElementById(canvasId);
+      if (!el) { throw new Error("canvas #" + canvasId + " не знайдено в DOM"); }
+      _statsCharts[key] = new Chart(el, config);
+    } catch (err) {
+      console.error("ZED Hub: помилка графіка " + canvasId + ":", err);
+      var el2 = document.getElementById(canvasId);
+      if (el2 && el2.parentNode) {
+        var msg = document.createElement("div");
+        msg.style.cssText = "color:#dc2626;font-size:11px;font-family:monospace;padding:10px;background:#fef2f2;border-radius:6px";
+        msg.textContent = "⚠️ Графік не побудувався: " + (err && err.message ? err.message : err);
+        el2.parentNode.insertBefore(msg, el2);
+      }
+    }
+  }
+
+  safeChart("avgCategory", "chartAvgCategory", {
     type: "bar",
     data: {
       labels: avgByCategory.map(function(c){ return c.label + " (" + c.count + ")"; }),
@@ -2078,7 +2095,7 @@ function renderStatistics() {
   });
 
   if (monthEntries.length) {
-    _statsCharts.auto = new Chart(document.getElementById("chartAuto"), {
+    safeChart("auto", "chartAuto", {
       type: "bar",
       data: {
         labels: monthEntries.map(function(m){ return m.label; }),
@@ -2089,7 +2106,7 @@ function renderStatistics() {
   }
 
   var transportColors = { "Море": TEAL, "Авто": AMBER, "Авіа": PURPLE, "Мультимодальне": GREEN, "ЖД": "#dc2626", "Не вказано": GRAY };
-  _statsCharts.transport = new Chart(document.getElementById("chartTransport"), {
+  safeChart("transport", "chartTransport", {
     type: "doughnut",
     data: {
       labels: transportEntries.map(function(t){ return t.name; }),
@@ -2099,7 +2116,7 @@ function renderStatistics() {
   });
 
   var clientPalette = [AMBER, TEAL, PURPLE, GREEN, "#dc2626", "#2563eb", GRAY];
-  _statsCharts.clients = new Chart(document.getElementById("chartClients"), {
+  safeChart("clients", "chartClients", {
     type: "doughnut",
     data: {
       labels: clientsForChart.map(function(c){ return c.name.length>20 ? c.name.substring(0,18)+"…" : c.name; }),
