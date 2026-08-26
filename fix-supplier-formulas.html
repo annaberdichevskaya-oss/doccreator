@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>ZED Hub — Перезапис постачальника (виправлення формул)</title>
+<style>
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;max-width:700px;margin:30px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+h1{font-size:18px}h1 span{color:#f59e0b}
+p{font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.5}
+.btn{border:none;border-radius:8px;padding:11px 20px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-yellow{background:#f59e0b;color:#fff}.btn-yellow:hover{background:#d97706}
+.btn-yellow:disabled{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+#log{font-family:monospace;font-size:11px;background:#1a1a2e;color:#a7f3d0;border-radius:8px;padding:14px;max-height:440px;overflow-y:auto;white-space:pre-wrap;display:none;margin-top:14px}
+.warn{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:13px;margin:12px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🔧 ZED <span>HUB</span> — перезапис постачальника (75 контейнерів)</h1>
+  <p>У попередній версії файлу деякі постачальники містили нерахованi формули Excel (текст типу "GUANGZH+E388+G388:H388"). У поточному файлі всі значення чисті. Цей інструмент <b>беззастережно перезаписує</b> Постачальник і Перевізник/Шиппер чистими значеннями для всіх 75 контейнерів.</p>
+  <div class="warn">⚠️ Перед запуском натисни <b>💾 Бекап</b> у ZED Hub.</div>
+  <button class="btn btn-yellow" id="run-btn" onclick="runFix()">Перезаписати постачальника</button>
+  <div id="log"></div>
+</div>
+
+<script>
+var SUPA_BASE = "https://wwovdtlnecmatenbpttc.supabase.co/rest/v1";
+var SUPA_KEY = "sb_publishable_y4t6yXoSShZPBecPAHDVYw_wuwATq0W";
+var SUPPLIERS = {"TGHU6346174": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD  11  конт.", "TLLU4275893": "YIWU PROSPERITY COMMODITY PROCUREMENT CO.，LTD  6  конт Зими", "ECMU7141230": "NINGBO JIAHAO APPLIANCE CO.,LIMITED  2 конт", "FFAU4414090": "NINGBO JIAHAO APPLIANCE CO.,LIMITED  3 конт", "CMAU8605878": "NINGBO JIAHAO APPLIANCE CO.,LIMITED  4 конт", "CMAU3860905": "NINGBO JIAHAO APPLIANCE CO.,LIMITED  5 конт", "TCKU7620771": "NINGBO JIAHAO APPLIANCE CO.,LIMITED  6 конт", "CMAU4818453": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "CMAU7762548": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "TXGU7879245": "NINGBO JIAHAO APPLIANCE CO.,LIMITED", "SEGU6371610": "YIWU PROSPERITY COMMODITY PROCUREMENT CO.，LTD  8 конт Зими", "CMAU8493700": "YIWU PROSPERITY COMMODITY PROCUREMENT CO.，LTD   конт Зими", "CMAU6742207": "RIVERSTAR/ Бангладеш  Зима", "CAIU3838642": "Tivoli / Бангладеш  Зима", "EITU1613130": "NINGBO (1)", "NGP3891558": "NINGBO JIAHAO APPLIANCE CO.,LIMITED", "S/O NO: NGP3956384": "NINGBO JIAHAO APPLIANCE CO.,LIMITED", "TRHU8288417": "NINGBO JIAHAO APPLIANCE CO.,LIMITED", "UETU6930747": "NINGBO JIAHAO APPLIANCE CO.,LIMITED", "EGSU6291851": "NINGBO (2)", "CAJU5225598": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "TCNU2278336": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "TCKU6982502": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "UETU8679733": "HANYU IMP0RT AND EXPORT", "SEKU5919200": "YIWU PROSPERITY COMMODITY PROCUREMENT CO.，LTD", "SEKU4316095": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "CMAU7303282": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "BMOU5418443": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "CMAU9186293": "Ningbo Jiahao", "LCL": "SHISHI JIUZHOUZHONGHE IMPORT AND EXPORT CO., LTD", "CXDU2109270": "RUIAN MINGBAO IMPORT & EXPORT CO., LTD  Осінь 26", "DRYU4552398": "WENZHOU MATROX SHOES CO.,LTD", "TEMU8028680": "WENZHOU MATROX SHOES CO.,LTD", "CMAU7279150": "YIWU PROSPERITY 2 конт Зими", "ECMU8167331": "WENZHOU MATROX SHOES CO.,LTD", "CMAU8413833": "YIWU BODIAN INTERNATIONAL TRADE CO., LTD", "CMAU6137654": "YIWU BODIAN INTERNATIONAL TRADE CO., LTD", "CMAU6795681": "YIWU BODIAN INTERNATIONAL TRADE CO., LTD", "TEMU8033747": "Wenzhou Matrox Shoes Co, LTD", "TEMU8032355": "Wenzhou Matrox Shoes Co, LTD", "DRYU4561569": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "CXDU1866583": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "OOLU5393973": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "CSNU9545742": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "APHU4640701": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "CZZU4630205": "Wenzhou Matrox Shoes Co, LTD  Зима 2028", "MSKU4809004": "Guangzhou_Square_Inch_Info_Tech", "TCLU2141860": "Hanyu Import and Export", "BEAU6087725": "Yiwu Luoxi Import and Export (2 коносамента)", "HPCU4271958": "YIWU PROSPERITY COMMODITY PROCUREMENT CO. LTD 8 cont", "DFSU7801350": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "CXDU2189743": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "CXDU2029597": "Wenzhou Matrox Shoes Co, LTD  Зима 2027", "EITU0509727": "Nantong Beile Home Technology", "TRLU8073443": "ATE TRADING LIMITED", "SEKU6329574": "ATE TRADING LIMITED", "ЧЕКАЄМО НОМЕР КОНТ": "NANTONG BEIAILE HOME TECHNOLOGY CO.,LTD", "MSBU5297194": "Guangzhou_Square_Inch_Info_Tech", "CAIU4750290": "Guangzhou_Square_Inch_Info_Tech", "BMOU5650470": "Jinjiang Xiangbai Miaoyang International", "CMAU3446407": "YIWU PROSPERITY COMMODITY PROCUREMENT CO. LTD 8 cont", "DRYU4566025": "GUANGZHOU LUQIXIN IMPORT EXPORT LTD", "SEKU4309537": "ZHAOQING GLORIA CLOTHING LTD", "TCLU5308714": "ZHAOQING GLORIA CLOTHING LTD", "EMCU8051640": "GUANGZHOU AILUNKE IMPORT AND EXPORT TRADING CO.,LTD", "EGSU2009739": "GUANGZHOU AILUNKE IMPORT AND EXPORT TRADING CO.,LTD", "CXDU2211641": "Wenzhou Matrox Shoes Co, LTD Зима 2027", "OOLU5395596": "RUIAN MINGBAO IMPORT & EXPORT CO.,LTD Зима 2027", "CSNU9536798": "Wenzhou Matrox Shoes Co, LTD Зима 2027", "CMAU8817497": "NINGBO JIAHAO APPLIANCE", "FFAU4466896": "NINGBO JIAHAO APPLIANCE", "ECMU8082954": "YIWU PROSPERITY COMMODITY PROCUREMENT CO. LTD", "EGSU8025418": "YIWU LUOXI IMPORT & EXPORT CO., LTD", "BEAU6301544": "Nantong Beiaile Home Technology Co., Ltd", "OOCU0226832": "RUIAN MINGBAO IMPORT & EXPORT CO.,LTD"};
+
+function headers(){return {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"};}
+function log(msg){var el=document.getElementById("log");el.style.display="block";el.textContent+=msg+"\n";el.scrollTop=el.scrollHeight;}
+function norm(s){return String(s||"").trim().toUpperCase();}
+
+async function runFix(){
+  document.getElementById("run-btn").disabled = true;
+  log("Читаю ордери з Supabase...");
+  var res = await fetch(SUPA_BASE+"/orders?select=id,data&limit=10000",{headers:headers()});
+  var rows = await res.json();
+  var orders = Array.isArray(rows)?rows.map(function(r){var d=r.data||{};d.id=r.id;return d;}):[];
+  log("В базі: "+orders.length+" ордерів.\n");
+
+  var withContainer = orders.filter(function(o){ return o.container && String(o.container).trim(); });
+
+  var updated=0, unchanged=0, notFound=[];
+  var keys = Object.keys(SUPPLIERS);
+  for (var i=0;i<keys.length;i++){
+    var cont = keys[i], supplier = SUPPLIERS[cont];
+    var o = withContainer.find(function(x){ return norm(x.container)===cont; });
+    if (!o) { notFound.push(cont); continue; }
+    var changed = false, changes = [];
+    if (o.supplier !== supplier) { changes.push("постачальник: "+(o.supplier||"—")+" → "+supplier); o.supplier = supplier; changed = true; }
+    if (o.carrier !== supplier) { changes.push("шиппер оновлено"); o.carrier = supplier; changed = true; }
+    if (!changed) { unchanged++; continue; }
+    o._v = (o._v||0)+1;
+    try {
+      var r = await fetch(SUPA_BASE+"/orders", {method:"POST", headers:headers(), body:JSON.stringify({id:o.id, data:o, updated_at:new Date().toISOString()})});
+      if (r.ok) { updated++; log("✓ "+o.order_id+" ("+cont+"): "+changes.join(" | ")); }
+      else { log("✗ "+o.order_id+": HTTP "+r.status); }
+    } catch(e){ log("✗ "+cont+": "+e.message); }
+  }
+  log("");
+  log("ГОТОВО ✅  Оновлено: "+updated+" | Вже правильно: "+unchanged+" | Не знайдено: "+notFound.length);
+  log("Відкрий ZED Hub і онови сторінку (Ctrl+Shift+R).");
+  document.getElementById("run-btn").disabled = false;
+}
+</script>
+</body>
+</html>
