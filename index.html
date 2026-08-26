@@ -2059,7 +2059,12 @@ function renderStatistics() {
 
   // ── Ініціалізація графіків (canvas вже в DOM після innerHTML) ──
   destroyStatsCharts();
-  if (typeof Chart === "undefined") return;
+  if (typeof Chart === "undefined") {
+    // Chart.js ще не встиг завантажитись з CDN — пробуємо ще раз трохи згодом,
+    // замість того щоб мовчки лишити графіки порожніми
+    setTimeout(function(){ if (currentTab === "statistics") renderStatistics(); }, 400);
+    return;
+  }
 
   var AMBER = "#f59e0b", TEAL = "#0e7490", GRAY = "#d1d5db", GREEN = "#16a34a", PURPLE = "#6d28d9";
 
