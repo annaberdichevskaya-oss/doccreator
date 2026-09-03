@@ -129,7 +129,8 @@ function gv(id){ var e=document.getElementById(id); return e ? e.value : ""; }
 function cellText(v){
   if (v === null || v === undefined) return "";
   if (v instanceof Date) {
-    return (v.getMonth()+1) + "/" + v.getDate() + "/" + v.getFullYear();
+    var rounded = new Date(Math.round(v.getTime() / 86400000) * 86400000);
+    return (rounded.getUTCMonth()+1) + "/" + rounded.getUTCDate() + "/" + rounded.getUTCFullYear();
   }
   return String(v).trim();
 }
@@ -175,18 +176,47 @@ function findContainer(){
         return allowedMonths.some(function(m){ return lower.indexOf(m) === 0; });
       });
 
+      var CONTAINER_RE = /[A-Z]{4}\d{7}/g;
+      var candidates = []; // всі знайдені збіги по всіх місяцях — оберемо найповніший
+
+      function rowCompleteness(r) {
+        // Рахує скільки з ключових полів (дата, постачальник, вантаж, маршрут, вартість, курс) заповнені
+        var keys = [2,3,4,5,6,7];
+        var n = 0;
+        keys.forEach(function(k){ if (r[k] !== null && r[k] !== undefined && String(r[k]).trim() !== "") n++; });
+        return n;
+      }
+
       for (var s = 0; s < relevantSheets.length; s++) {
         var sheetName = relevantSheets[s];
         var ws = wb.Sheets[sheetName];
         var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false, cellDates: true });
         for (var i = 0; i < rows.length; i++) {
           var r = rows[i];
-          if (!r || !r[13]) continue;
-          if (String(r[13]).trim().toUpperCase() === target) {
-            found = r; foundSheet = sheetName; break;
+          if (!r) continue;
+          if (r[13] && String(r[13]).trim().toUpperCase() === target) {
+            candidates.push({ row: r, sheet: sheetName, supplier: null, score: rowCompleteness(r) });
+            continue;
+          }
+          if (r[3]) {
+            var text3 = String(r[3]);
+            var matches = text3.toUpperCase().match(CONTAINER_RE);
+            if (matches && matches.indexOf(target) >= 0) {
+              var extractedSup = text3.replace(new RegExp(target, "i"), "").replace(/[\/\-,]+\s*$/, "").trim();
+              candidates.push({ row: r, sheet: sheetName, supplier: extractedSup, score: rowCompleteness(r) });
+            }
           }
         }
-        if (found) break;
+      }
+
+      var foundExtractedSupplier = null;
+      if (candidates.length) {
+        candidates.sort(function(a,b){ return b.score - a.score; }); // найповніший запис — перший
+        var best = candidates[0];
+        found = best.row; foundSheet = best.sheet; foundExtractedSupplier = best.supplier;
+        if (candidates.length > 1) {
+          showStatus("ℹ️ Контейнер знайдено в " + candidates.length + " місяцях (" + candidates.map(function(c){return c.sheet;}).join(", ") + ") — використано найповніший запис із \"" + best.sheet + "\".", true);
+        }
       }
 
       document.getElementById("find-btn").disabled = false;
@@ -200,7 +230,7 @@ function findContainer(){
       FOUND = {
         client: cellText(found[1]),
         dateStart: cellText(found[2]),
-        supplier: cellText(found[3]),
+        supplier: foundExtractedSupplier !== null ? foundExtractedSupplier : cellText(found[3]),
         cargo: cellText(found[4]),
         route: cellText(found[5]),
         valueEur: cellText(found[6]),
@@ -210,7 +240,7 @@ function findContainer(){
         tariff: cellText(found[10]),
         premium: cellText(found[11]),
         docs: cellText(found[12]),
-        container: cellText(found[13])
+        container: foundExtractedSupplier !== null ? contNum.toUpperCase() : cellText(found[13])
       };
 
       showStatus("Знайдено на аркуші \"" + foundSheet + "\"", true);
