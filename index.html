@@ -155,9 +155,6 @@ select.inline{border:none;background:transparent;font-size:12px;cursor:pointer;o
   <button class="tab-btn" id="tab-cli" onclick="switchTab('clients')">
     👥 Клієнти <span class="tab-count" id="cnt-cli">0</span>
   </button>
-  <button class="tab-btn" id="tab-task" onclick="switchTab('tasker')">
-    ✅ Tasker <span class="tab-count" id="cnt-task">0</span>
-  </button>
   <button class="tab-btn" id="tab-stats" onclick="switchTab('statistics')">
     📊 Статистика
   </button>
@@ -183,7 +180,8 @@ var REQ_STATUS_MAP = {
 };
 
 var CARGO_STATUSES = ["Очікує завантаження","Завантажено","В дорозі","Прибув","Розвантажено","TBD"];
-var CUSTOMS_STATUSES = ["TBD","Док подані","Скан","Фіз огляд","Розмитнено"];
+var CUSTOMS_STATUSES = ["TBD","На терміналі","Розмитнено"];
+var CUSTOMS_PL_STATUSES = ["TBD","Скан/огляд"];
 var DELIVERY_STATUSES = ["Очікує","Транспорт призначено","Завантажено","В дорозі","Доставлено","Потребує уточнення","TBD"];
 var PAYMENT_STATUSES = ["Очікує від фін відділу","Виставлено","Оплачено","Прострочено","TBD"];
 var BOOKING_STATUSES = ["Очікує букінг","Отримано","Підтверджено"];
@@ -197,7 +195,7 @@ function statusPill(status, map) {
 
 function reqPill(s) { return statusPill(s, REQ_STATUS_MAP); }
 function custPill(s) {
-  var m = {"TBD":"p-reject","Док подані":"p-book","Скан":"p-wait","Фіз огляд":"p-wait","Розмитнено":"p-clear"};
+  var m = {"TBD":"p-reject","На терміналі":"p-wait","Розмитнено":"p-clear"};
   return statusPill(s, m);
 }
 function payCls(s) {
@@ -473,6 +471,8 @@ function restoreBackup(file) {
 // ── Current tab ──────────────────────────────────────────────────
 var currentTab = "requests";
 var transitCustomsFilter = "";
+var transitManagerFilter = "";
+var transitCargoFilter = "";
 var transitDateFrom = "";
 var transitDateTo = "";
 var reqSearch = "";
@@ -488,7 +488,6 @@ var ordDateTo = "";
 var ordManagerSel = [];
 var ordLogistSel = [];
 var ordExecOpen = false;
-var ordCargoFilter = "";
 var ordView = (function(){ try { return localStorage.getItem("zedhub_ordview") || "compact"; } catch(e){ return "compact"; } })();
 var _expandedOrders = {};
 
@@ -509,7 +508,6 @@ function switchTab(tab) {
   document.getElementById("tab-req").classList.toggle("active", tab === "requests");
   document.getElementById("tab-ord").classList.toggle("active", tab === "orders");
   document.getElementById("tab-cli").classList.toggle("active", tab === "clients");
-  document.getElementById("tab-task").classList.toggle("active", tab === "tasker");
   document.getElementById("tab-transit").classList.toggle("active", tab === "transit");
   document.getElementById("tab-stats").classList.toggle("active", tab === "statistics");
   document.getElementById("tab-ref").classList.toggle("active", tab === "reference");
@@ -674,7 +672,7 @@ function cargoCls(s) {
   return m[s] || "p-reject";
 }
 function custCls(s) {
-  var m = {"TBD":"p-reject","Док подані":"p-book","Скан":"p-wait","Фіз огляд":"p-wait","Розмитнено":"p-clear"};
+  var m = {"TBD":"p-reject","На терміналі":"p-wait","Розмитнено":"p-clear"};
   return m[s] || "p-reject";
 }
 function delivClsC(s) {
@@ -689,7 +687,6 @@ function buildCompactOrders(filtered) {
     + "<span style='width:110px'>КОНТЕЙНЕР</span>"
     + "<span style='width:52px'>ETD</span>"
     + "<span style='width:52px'>ETA</span>"
-    + "<span style='width:100px'>ДОСТАВКА</span>"
     + "<span style='width:80px;text-align:right'>НАЦІНКА</span>"
     + "</div>";
 
@@ -710,7 +707,6 @@ function buildCompactOrders(filtered) {
       + "</div>"
       + "<div style='width:52px;font-size:11px'>" + escQ((fmtDate(o.etd)||"—").substring(0,5)) + "</div>"
       + "<div style='width:52px;font-size:11px;color:#0e7490'>" + escQ((fmtDate(o.eta)||"—").substring(0,5)) + "</div>"
-      + "<div style='width:100px'>" + delivPill(o.delivery_status) + "</div>"
       + "<div style='width:80px;text-align:right'>"
       + "<div style='font-size:12px;font-weight:600;color:#16a34a'>$ " + markup.toLocaleString("uk-UA") + "</div>"
       + "</div>"
@@ -749,9 +745,8 @@ function renderOrders() {
     var matchSearch = !q || o.client.toLowerCase().indexOf(q) >= 0 || o.order_id.toLowerCase().indexOf(q) >= 0 || (o.route_full||o.route||"").toLowerCase().indexOf(q) >= 0 || (o.container||"").toLowerCase().indexOf(q) >= 0 || (o.booking||"").toLowerCase().indexOf(q) >= 0 || (o.carrier||"").toLowerCase().indexOf(q) >= 0 || (o.incoterm_code||"").toLowerCase().indexOf(q) >= 0 || (o.incoterms||"").toLowerCase().indexOf(q) >= 0;
     var matchManager = ordManagerSel.length===0 || ordManagerSel.indexOf(o.manager||"") >= 0;
     var matchLogist = ordLogistSel.length===0 || ordLogistSel.indexOf(o.logist||"") >= 0;
-    var matchCargo = !ordCargoFilter || (o.delivery_status||"") === ordCargoFilter;
     var matchD = inDateRange(o.date, ordDateFrom, ordDateTo);
-    return matchSearch && matchManager && matchLogist && matchCargo && matchD;
+    return matchSearch && matchManager && matchLogist && matchD;
   });
   filtered.sort(function(a,b){
     if (ordSort === "eta" || ordSort === "etd" || ordSort === "cutoff") {
@@ -806,10 +801,6 @@ function renderOrders() {
         btn += "</div>";
         return btn;
       })()
-    + "<select class='filter-sel' onchange='ordCargoFilter=this.value;renderOrders()'>"
-    + "<option value=''>🚚 Всі статуси доставки</option>"
-    + DELIVERY_STATUSES.map(function(s){return "<option value='" + s + "'" + (ordCargoFilter===s?" selected":"") + ">" + s + "</option>";}).join("")
-    + "</select>"
     + "<select class='filter-sel' onchange='ordSort=this.value;renderOrders()'>"
     + "<option value='new'" + (ordSort==="new"?" selected":"") + ">↓ Новіші ордери</option>"
     + "<option value='old'" + (ordSort==="old"?" selected":"") + ">↑ Старіші ордери</option>"
@@ -841,7 +832,7 @@ function renderOrders() {
     + "<th style='width:30px;text-align:center'><input type='checkbox' " + (allChecked?"checked":"") + " onchange='toggleAllOrders(this.checked)'></th>"
     + "<th>ORDER ID</th><th class='col-client'>КЛІЄНТ / МАРШРУТ</th>"
     + "<th>БУКІНГ / КОНТЕЙНЕР</th><th>ГОТОВНІСТЬ</th><th>CUT-OFF</th>"
-    + "<th>ETD</th><th>ETA</th><th>ДОСТАВКА</th><th>МИТНИЦЯ</th><th>МЕНЕДЖЕР / ЛОГІСТ</th><th class='col-sum'>НАЦІНКА $</th><th>📁</th><th>✉️</th><th>ДІЇ</th>"
+    + "<th>ETD</th><th>ETA</th><th>МИТНИЦЯ</th><th>МЕНЕДЖЕР / ЛОГІСТ</th><th class='col-sum'>НАЦІНКА $</th><th>📁</th><th>✉️</th><th>ДІЇ</th>"
     + "</tr></thead><tbody>";
 
   filtered.forEach(function(o) {
@@ -855,7 +846,6 @@ function renderOrders() {
       + "<td style='font-size:11px;color:#ef4444;font-weight:600'>" + escQ(fmtDate(o.cutoff)||"—") + "</td>"
       + "<td style='font-size:11px'>" + escQ(fmtDate(o.etd)||"—") + "</td>"
       + "<td style='font-size:11px;color:#16a34a'>" + escQ(fmtDate(o.eta)||"—") + "</td>"
-      + "<td>" + delivPill(o.delivery_status) + "</td>"
       + "<td>" + custPill(o.customs_status) + "</td>"
       + "<td><div style='display:flex;flex-direction:column;gap:3px'>"
       + "<select style='font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid #e5e7eb;cursor:pointer' title='Менеджер' onchange='updateOrdManager(" + o.id + ",this.value)'>" + MANAGERS.map(function(m){return "<option" + ((o.manager||"—")===m?" selected":"") + ">" + m + "</option>";}).join("") + "</select>"
@@ -1077,7 +1067,7 @@ function showOrderModal(o) {
 
     + "<div class='section-title'>Митне оформлення</div>"
     + "<div class='form-grid'>"
-    + "<div class='field'><label>СТАТУС МИТНИЦІ EX/TRANSIT</label>" + sel("of-custpl", CUSTOMS_STATUSES, isEdit ? (o.customs_pl_status||"TBD") : "TBD") + "</div>"
+    + "<div class='field'><label>СТАТУС МИТНИЦІ EX/TRANSIT</label>" + sel("of-custpl", CUSTOMS_PL_STATUSES, isEdit ? (o.customs_pl_status||"TBD") : "TBD") + "</div>"
     + "<div class='field'><label>СТАТУС МИТНИЦІ UA</label>" + sel("of-cust", CUSTOMS_STATUSES, isEdit ? o.customs_status : "TBD") + "</div>"
     + "</div>"
 
@@ -1088,8 +1078,7 @@ function showOrderModal(o) {
 
     + "<div class='section-title'>Доставка в Україні</div>"
     + "<div class='form-grid'>"
-    + "<div class='field'><label>СТАТУС ДОСТАВКИ</label>" + sel("of-deliv", DELIVERY_STATUSES, isEdit ? o.delivery_status : "TBD") + "</div>"
-    + "<div class='field'><label>ДАТА ДОСТАВКИ</label>" + dateInput("of-delivdate", isEdit ? (o.delivery_date||"") : "") + "</div>"
+
     + "</div>"
 
     + "<div class='section-title'>Фінанси</div>"
@@ -1126,7 +1115,7 @@ function saveOrder(id) {
     cargo_status: gv("of-carg"), decl: gv("of-decl"),
     customs_pl_status: gv("of-custpl"), customs_status: gv("of-cust"),
     resort: gv("of-resort"),
-    delivery_status: gv("of-deliv"), delivery_date: fromISODate(gv("of-delivdate")),
+
     sum_netto: parseFloat(gv("of-netto"))||0, sum_brutto: parseFloat(gv("of-brutto"))||0,
     markup_auto: parseFloat(gv("of-markup-auto"))||0, markup_local: parseFloat(gv("of-markup-local"))||0,
     invoice_sum: (num(gv("of-brutto"))-num(gv("of-netto")))+num(gv("of-markup-auto"))+num(gv("of-markup-local")),
@@ -1375,16 +1364,14 @@ function exportOrdersExcel() {
     var matchSearch = !q || o.client.toLowerCase().indexOf(q) >= 0 || o.order_id.toLowerCase().indexOf(q) >= 0 || (o.route_full||o.route||"").toLowerCase().indexOf(q) >= 0 || (o.container||"").toLowerCase().indexOf(q) >= 0 || (o.booking||"").toLowerCase().indexOf(q) >= 0 || (o.carrier||"").toLowerCase().indexOf(q) >= 0 || (o.incoterm_code||"").toLowerCase().indexOf(q) >= 0 || (o.incoterms||"").toLowerCase().indexOf(q) >= 0;
     var matchManager = ordManagerSel.length===0 || ordManagerSel.indexOf(o.manager||"") >= 0;
     var matchLogist = ordLogistSel.length===0 || ordLogistSel.indexOf(o.logist||"") >= 0;
-    var matchCargo = !ordCargoFilter || (o.delivery_status||"") === ordCargoFilter;
     var matchD = inDateRange(o.date, ordDateFrom, ordDateTo);
-    return matchSearch && matchManager && matchLogist && matchCargo && matchD;
+    return matchSearch && matchManager && matchLogist && matchD;
   }).map(function(o){
     return {
       "ORDER ID": o.order_id||"", "№ Запиту": o.req_id||"", "Дата": o.date||"", "Клієнт": o.client||"",
       "Маршрут": o.route_full||o.route||"", "Букінг": o.booking||"", "Перевізник": o.carrier||"", "Контейнер": o.container||"",
       "Готовність": o.ready_date||"", "Cut-off": o.cutoff||"", "ETD": o.etd||"", "ETA": o.eta||"",
       "Статус вантажу": o.cargo_status||"", "Митниця EX/TRANSIT": o.customs_pl_status||"", "Перетарка": o.resort||"", "Митниця UA": o.customs_status||"",
-      "Доставка UA": o.delivery_status||"", "Дата доставки": o.delivery_date||"",
       "Нетто фрахт $": num(o.sum_netto), "Брутто фрахт $": num(o.sum_brutto), "Націнка авто $": num(o.markup_auto), "Націнка локальні $": num(o.markup_local), "Тотал націнка $": (num(o.sum_brutto)-num(o.sum_netto))+num(o.markup_auto)+num(o.markup_local),
       "Оплата": o.payment_status||"",
       "Менеджер": o.manager||"", "Логіст": o.logist||"", "Примітки": o.notes||""
@@ -1580,6 +1567,8 @@ function renderTransit() {
       if (!inWin1 && !inWin2) return false;
     }
     if (transitCustomsFilter && (o.customs_status||"TBD") !== transitCustomsFilter) return false;
+    if (transitManagerFilter && (o.manager||"—") !== transitManagerFilter) return false;
+    if (transitCargoFilter && (o.cargo_status||"TBD") !== transitCargoFilter) return false;
     return true;
   });
   list.sort(function(a,b){
@@ -1603,6 +1592,14 @@ function renderTransit() {
     + "<select class='filter-sel' onchange='transitCustomsFilter=this.value;renderTransit()'>"
     + "<option value=''>🛃 Всі статуси митниці</option>"
     + CUSTOMS_STATUSES.map(function(s){return "<option value='" + s + "'" + (transitCustomsFilter===s?" selected":"") + ">" + s + "</option>";}).join("")
+    + "</select>"
+    + "<select class='filter-sel' onchange='transitManagerFilter=this.value;renderTransit()'>"
+    + "<option value=''>👤 Всі менеджери</option>"
+    + MANAGERS.filter(function(m){return m!=="—";}).map(function(m){return "<option value='" + m + "'" + (transitManagerFilter===m?" selected":"") + ">" + m + "</option>";}).join("")
+    + "</select>"
+    + "<select class='filter-sel' onchange='transitCargoFilter=this.value;renderTransit()'>"
+    + "<option value=''>📦 Всі статуси вантажу</option>"
+    + CARGO_STATUSES.map(function(s){return "<option value='" + s + "'" + (transitCargoFilter===s?" selected":"") + ">" + s + "</option>";}).join("")
     + "</select>"
     + "<span style='display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280'>📅 <input type='date' class='filter-sel' style='padding:5px 8px' value='" + transitDateFrom + "' onchange='transitDateFrom=this.value;renderTransit()'> — <input type='date' class='filter-sel' style='padding:5px 8px' value='" + transitDateTo + "' onchange='transitDateTo=this.value;renderTransit()'></span>"
     + (usingCustomRange ? "<button class='btn btn-gray' onclick='transitDateFrom=\"\";transitDateTo=\"\";renderTransit()'>Скинути період</button>" : "")
@@ -2008,12 +2005,27 @@ function renderStatistics() {
     return;
   }
 
-  // ── По типу перевезення + По клієнтам (поруч, клієнти справа) ──
+  // ── По клієнтам (окремо, на всю ширину — тут найбільше вмісту) ──
   var clientsForChart = clientEntries.slice(0, 6);
   var clientsOtherSum = clientEntries.slice(6).reduce(function(s,c){return s+c.earnings;},0);
   if (clientsOtherSum > 0) clientsForChart = clientsForChart.concat([{name:"Інші", earnings: clientsOtherSum}]);
 
-  html += "<div style='display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-bottom:12px;align-items:start'>"
+  html += "<div class='table-wrap' style='padding:14px;background:#fff;margin-bottom:12px'>"
+    + "<div class='section-title' style='margin-top:0;margin-bottom:8px'>По клієнтам</div>"
+    + "<div style='display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:center'>"
+    + "<div style='position:relative;height:220px'><canvas id='chartClients'></canvas></div>"
+    + "<table style='font-size:12px'><tbody>"
+    + clientEntries.map(function(c){
+        return "<tr><td style='padding:4px 4px;font-weight:600'>"+escQ(c.name)+"</td>"
+          + "<td style='padding:4px 4px;text-align:right;color:#6b7280'>"+c.count+" орд.</td>"
+          + "<td style='padding:4px 4px;text-align:right;font-weight:700;color:#16a34a'>$ "+Math.round(c.earnings).toLocaleString("uk-UA")+"</td></tr>";
+      }).join("")
+    + "</tbody></table>"
+    + "</div>"
+    + "</div>";
+
+  // ── По типу перевезення + Середня націнка (поруч, приблизно однакова висота) ──
+  html += "<div style='display:grid;grid-template-columns:1fr 1.2fr;gap:12px;margin-bottom:12px;align-items:start'>"
     + "<div class='table-wrap' style='padding:14px;background:#fff'>"
     + "<div class='section-title' style='margin-top:0;margin-bottom:8px'>По типу перевезення</div>"
     + "<table style='font-size:12px'><thead><tr style='background:transparent'>"
@@ -2027,30 +2039,17 @@ function renderStatistics() {
     + "</tbody></table>"
     + "</div>"
     + "<div class='table-wrap' style='padding:14px;background:#fff'>"
-    + "<div class='section-title' style='margin-top:0;margin-bottom:8px'>По клієнтам</div>"
-    + "<div style='position:relative;height:200px'><canvas id='chartClients'></canvas></div>"
-    + "<table style='font-size:11px;margin-top:8px'><tbody>"
-    + clientEntries.slice(0,6).map(function(c){
-        return "<tr><td style='padding:3px 4px;font-weight:600'>"+escQ(c.name)+"</td>"
-          + "<td style='padding:3px 4px;text-align:right;color:#6b7280'>"+c.count+" орд.</td>"
-          + "<td style='padding:3px 4px;text-align:right;font-weight:700;color:#16a34a'>$ "+Math.round(c.earnings).toLocaleString("uk-UA")+"</td></tr>";
-      }).join("")
-    + "</tbody></table>"
-    + "</div>"
-    + "</div>";
-
-  // ── Середня націнка: FOB / CIF / FCA (компактно, без графіка) ──
-  html += "<div class='table-wrap' style='padding:14px;background:#fff;margin-bottom:12px;max-width:680px'>"
     + "<div class='section-title' style='margin-top:0;margin-bottom:10px'>Середня націнка: FOB / CIF / FCA</div>"
-    + "<div style='display:flex;gap:24px;flex-wrap:wrap'>"
+    + "<div style='display:flex;gap:20px;flex-wrap:wrap'>"
     + avgByCategory.map(function(c){
         var ordWord = ordWordFor(c.count);
         return "<div>"
-          + "<div style='font-size:22px;font-weight:700;color:" + c.color + "'>$ " + Math.round(c.avg).toLocaleString("uk-UA") + "</div>"
+          + "<div style='font-size:20px;font-weight:700;color:" + c.color + "'>$ " + Math.round(c.avg).toLocaleString("uk-UA") + "</div>"
           + "<div style='font-size:11px;color:#9ca3af'>" + c.label + " (" + c.sub + ") — " + c.count + " " + ordWord + "</div>"
-          + (c.full !== undefined ? "<div style='font-size:11px;color:#374151;margin-top:3px'>Повний ордер (фрахт+авто+локальні): <b>$ " + Math.round(c.full).toLocaleString("uk-UA") + "</b></div>" : "")
+          + (c.full !== undefined ? "<div style='font-size:11px;color:#374151;margin-top:3px'>Повний ордер: <b>$ " + Math.round(c.full).toLocaleString("uk-UA") + "</b></div>" : "")
           + "</div>";
       }).join("")
+    + "</div>"
     + "</div>"
     + "</div>";
 
