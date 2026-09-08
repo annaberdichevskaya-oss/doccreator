@@ -745,9 +745,16 @@ function renderOrders() {
     var matchSearch = !q || o.client.toLowerCase().indexOf(q) >= 0 || o.order_id.toLowerCase().indexOf(q) >= 0 || (o.route_full||o.route||"").toLowerCase().indexOf(q) >= 0 || (o.container||"").toLowerCase().indexOf(q) >= 0 || (o.booking||"").toLowerCase().indexOf(q) >= 0 || (o.carrier||"").toLowerCase().indexOf(q) >= 0 || (o.incoterm_code||"").toLowerCase().indexOf(q) >= 0 || (o.incoterms||"").toLowerCase().indexOf(q) >= 0;
     var matchManager = ordManagerSel.length===0 || ordManagerSel.indexOf(o.manager||"") >= 0;
     var matchLogist = ordLogistSel.length===0 || ordLogistSel.indexOf(o.logist||"") >= 0;
-    var matchD = inDateRange(o.date, ordDateFrom, ordDateTo);
+    var matchD = inDateRange(o.eta, ordDateFrom, ordDateTo);
     return matchSearch && matchManager && matchLogist && matchD;
   });
+  if (ordSort === "eta" && !ordDateFrom && !ordDateTo) {
+    var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    filtered = filtered.filter(function(o){
+      var d = parseDateVal(o.eta);
+      return d === null || d >= todayStart.getTime();
+    });
+  }
   filtered.sort(function(a,b){
     if (ordSort === "eta" || ordSort === "etd" || ordSort === "cutoff") {
       var fld = ordSort;
@@ -1364,7 +1371,7 @@ function exportOrdersExcel() {
     var matchSearch = !q || o.client.toLowerCase().indexOf(q) >= 0 || o.order_id.toLowerCase().indexOf(q) >= 0 || (o.route_full||o.route||"").toLowerCase().indexOf(q) >= 0 || (o.container||"").toLowerCase().indexOf(q) >= 0 || (o.booking||"").toLowerCase().indexOf(q) >= 0 || (o.carrier||"").toLowerCase().indexOf(q) >= 0 || (o.incoterm_code||"").toLowerCase().indexOf(q) >= 0 || (o.incoterms||"").toLowerCase().indexOf(q) >= 0;
     var matchManager = ordManagerSel.length===0 || ordManagerSel.indexOf(o.manager||"") >= 0;
     var matchLogist = ordLogistSel.length===0 || ordLogistSel.indexOf(o.logist||"") >= 0;
-    var matchD = inDateRange(o.date, ordDateFrom, ordDateTo);
+    var matchD = inDateRange(o.eta, ordDateFrom, ordDateTo);
     return matchSearch && matchManager && matchLogist && matchD;
   }).map(function(o){
     return {
