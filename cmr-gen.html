@@ -30,6 +30,17 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
 #status.busy{background:#fef3c7;color:#92400e;display:block}
 .hint{font-size:11px;color:#9ca3af;margin-top:3px}
 .section-title{font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #f3f4f6}
+
+/* Візуальна таблиця CMR — вся структура видима одразу, поля вводу прямо в комірках */
+#cmrTable{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px}
+#cmrTable td{border:1px solid #9ca3af;padding:6px 8px;vertical-align:top}
+#cmrTable .box-label{font-size:8.5px;color:#6b7280;font-style:italic;line-height:1.3;margin-bottom:3px;display:block}
+#cmrTable .box-input{width:100%;border:none;border-bottom:1px dashed #d1d5db;font-size:11.5px;font-family:Arial,sans-serif;padding:2px 0;background:transparent}
+#cmrTable .box-input:focus{outline:none;border-bottom-color:#f59e0b}
+#cmrTable textarea.box-input{resize:vertical;min-height:32px;width:100%}
+#cmrTable .title-cell{text-align:center;vertical-align:middle}
+#cmrTable .title-main{font-size:10px;color:#6b7280}
+#cmrTable .title-cmr{font-size:20px;font-weight:bold;margin:4px 0}
 </style>
 </head>
 <body>
@@ -39,14 +50,14 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
     <h1>📄 DocCreator — CMR <span>(Гарні Речі)</span></h1>
     <p class="sub">Завантаж пакет документів (інвойс, пакувальний лист) і файл UB.xlsx — ШІ проаналізує документи, дані по авто підтягнуться з UB за номером контейнера.</p>
 
-    <div class="section-title">1. Документи для аналізу</div>
+    <div class="section-title">Крок 1 — Документи для аналізу</div>
     <div class="field">
       <label>ПАКЕТ ДОКУМЕНТІВ (PDF або зображення — інвойс, пакувальний лист)</label>
       <input type="file" id="f-docs" accept=".pdf,.png,.jpg,.jpeg" multiple>
       <div class="hint">Можна вибрати декілька файлів одразу (Ctrl+клік)</div>
     </div>
 
-    <div class="section-title">2. Дані по авто (з UB.xlsx)</div>
+    <div class="section-title">Крок 2 — Дані по авто (з UB.xlsx)</div>
     <div class="grid2">
       <div class="field">
         <label>ФАЙЛ UB.xlsx</label>
@@ -61,38 +72,105 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
     <button class="btn btn-yellow" id="analyze-btn" onclick="analyze()">🤖 Проаналізувати документи</button>
     <div id="status"></div>
 
-    <div id="reviewArea" style="display:none">
-      <div class="section-title">3. Перевір і виправ дані перед створенням CMR</div>
+    <div class="section-title">Крок 3 — CMR (заповнюється автоматично після аналізу, можна редагувати вручну)</div>
 
-      <div class="grid2">
-        <div class="field"><label>1. ВІДПРАВНИК — назва (Sender — name)</label><input type="text" id="r-sender-name"></div>
-        <div class="field"><label>1. ВІДПРАВНИК — адреса (Sender — address)</label><input type="text" id="r-sender-addr"></div>
-      </div>
-
-      <div class="field"><label>2. ОДЕРЖУВАЧ (Consignee) — повністю</label><textarea id="r-recv">GARNI RECHI LIMITED COMPANY, Ukraine, 25012, Kirovohrad Oblast, Kropyvnytskyi, Yevhen Chykalenka Street, 1A, room 423, Ukraine</textarea></div>
-
-      <div class="field"><label>3. МІСЦЕ РОЗВАНТАЖЕННЯ (Place of delivery)</label><input type="text" id="r-deliv-place" value="Kropyvnytskyi, Kirovohrad region"></div>
-
-      <div class="grid2">
-        <div class="field"><label>4. МІСЦЕ ЗАВАНТАЖЕННЯ (Place of loading)</label><textarea id="r-load-place">IGS GDAŃSK
+    <table id="cmrTable">
+      <tr>
+        <td style="width:50%">
+          <span class="box-label">1 Відправник (найменування, адреса, країна) / Sender (name, address, country)</span>
+          <input class="box-input" id="r-sender-name" placeholder="Назва компанії">
+          <input class="box-input" id="r-sender-addr" placeholder="Адреса" style="margin-top:4px">
+        </td>
+        <td style="width:50%" class="title-cell" rowspan="1">
+          <div class="title-main">Міжнародна товарно-транспортна накладна<br>International Consignment Note</div>
+          <div class="title-cmr">CMR</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span class="box-label">2 Одержувач (найменування, адреса, країна) / Consignee (name, address, country)</span>
+          <textarea class="box-input" id="r-recv">GARNI RECHI LIMITED COMPANY, Ukraine, 25012, Kirovohrad Oblast, Kropyvnytskyi, Yevhen Chykalenka Street, 1A, room 423, Ukraine</textarea>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">3 Місце розвантаження вантажу / Place of delivery of the goods</span>
+          <input class="box-input" id="r-deliv-place" value="Kropyvnytskyi, Kirovohrad region">
+        </td>
+        <td>
+          <span class="box-label">16 Перевізник (найменування, адреса, країна) / Carrier (name, address, country)</span>
+          <input class="box-input" id="r-plates" placeholder="Номерні знаки авто">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">4 Місце і дата завантаження вантажу / Place and date of taking over the goods</span>
+          <textarea class="box-input" id="r-load-place">IGS GDAŃSK
 Ul. Ordynacka 12,
-83-050 Bąkowo, Poland</textarea></div>
-        <div class="field"><label>4. ДАТА ЗАВАНТАЖЕННЯ (Date of loading)</label><input type="text" id="r-load-date" placeholder="ДД.ММ.РРРР"></div>
-      </div>
+83-050 Bąkowo, Poland</textarea>
+          <input class="box-input" id="r-load-date" placeholder="Дата, ДД.ММ.РРРР" style="margin-top:4px">
+        </td>
+        <td>
+          <span class="box-label">17 Наступний перевізник (найменування, адреса, країна) / Successive carrier (name, address, country)</span>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span class="box-label">5 Додані документи / Documents attached</span>
+          <input class="box-input" id="r-docs" placeholder="INVOICE NO. 8 DD 07.07.2026">
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" style="height:14px"></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">13 Вказівки відправника (митне та інше оформлення) / Sender's instructions (customs and other formalities)</span>
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">14 / 15 Повернення / Умови оплати / Refund / Instructions for payment of carriage</span>
+        </td>
+        <td>
+          <span class="box-label">20 Особливі узгоджені умови / Special agreements</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">21 Складено в / Established in</span>
+          <input class="box-input" id="r-established" value="83-050 Bakowo Poland">
+        </td>
+        <td>
+          <span class="box-label">24 Вантаж отримано / Дата / Goods received / Date</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">22 Підпис та штамп відправника / Signature and stamp of the sender</span>
+          <div style="font-size:11.5px;color:#374151;padding:2px 0" id="r-plates-echo"></div>
+        </td>
+        <td>
+          <span class="box-label">23 Підпис та штамп перевізника / Signature and stamp of the carrier</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="box-label">25 Реєстрац. номер — Тягач/Напівпричіп / Registration No. — Tractor unit/Trailer</span>
+        </td>
+        <td>
+          <span class="box-label">26 Марка — Тягач/Напівпричіп / Make — Tractor unit/Trailer</span>
+        </td>
+      </tr>
+    </table>
 
-      <div class="field"><label>5. ДОДАНІ ДОКУМЕНТИ (Documents attached)</label><input type="text" id="r-docs" placeholder="INVOICE NO. 8 DD 07.07.2026"></div>
-
-      <div class="section-title">Перевізник (з UB.xlsx за номером контейнера)</div>
-      <div class="grid2">
-        <div class="field"><label>16 / 22. НОМЕРНІ ЗНАКИ (Carrier / Signature) — латиницею</label><input type="text" id="r-plates"></div>
-        <div class="field"><label>№ КОНТЕЙНЕРА (для назви файлу)</label><input type="text" id="r-container"></div>
-      </div>
-
-      <div class="field"><label>21. СКЛАДЕНО В (Established in)</label><input type="text" id="r-established" value="83-050 Bakowo Poland"></div>
-
-      <button class="btn btn-yellow" onclick="generateCmr()">📄 Створити CMR (.docx)</button>
-      <div id="genStatus" style="font-size:12px;margin-top:8px"></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="field"><label>№ КОНТЕЙНЕРА (для назви файлу)</label><input type="text" id="r-container"></div>
     </div>
+
+    <button class="btn btn-yellow" onclick="generateCmr()" style="margin-top:6px">📄 Створити CMR (.docx)</button>
+    <div id="genStatus" style="font-size:12px;margin-top:8px"></div>
   </div>
 
 </div>
@@ -247,7 +325,7 @@ async function analyze(){
       text: "Це пакет документів (інвойс, пакувальний лист тощо) для міжнародного вантажу з Китаю/Польщі в Україну. " +
         "Витягни дані для складання CMR-накладної. Дай ВИКЛЮЧНО JSON без жодного іншого тексту, у форматі:\n" +
         '{"sender_name":"назва компанії-відправника (постачальника)", "sender_address":"повна адреса відправника", ' +
-        '"invoice_no":"номер інвойсу", "invoice_date":"дата інвойсу, ДД.ММ.РРРР"}\n' +
+        '"invoice_no":"номер інвойсу", "invoice_date":"дата інвойсу, ДД.ММ.РРРР", "loading_date":"дата завантаження/відвантаження вантажу якщо вказана в документах, ДД.ММ.РРРР"}\n' +
         "Якщо якесь поле не вдається знайти в документах — постав порожній рядок для нього."
     });
 
@@ -268,24 +346,24 @@ async function analyze(){
     if (!jsonMatch) throw new Error("Не вдалось розпізнати відповідь ШІ як JSON: " + textOut.slice(0,300));
     var extracted = JSON.parse(jsonMatch[0]);
 
-    // 4. Заповнюю форму перевірки
+    // 4. Заповнюю поля 1, 4 (дата), 5 — решта (2, 3, 4-місце) вже мають фіксовані значення за замовчуванням
     document.getElementById("r-sender-name").value = extracted.sender_name || (UB_MATCH ? UB_MATCH.supplier : "");
     document.getElementById("r-sender-addr").value = extracted.sender_address || "";
     document.getElementById("r-docs").value = (extracted.invoice_no ? ("INVOICE NO. " + extracted.invoice_no) : "") + (extracted.invoice_date ? (" DD " + extracted.invoice_date) : "");
+    document.getElementById("r-load-date").value = extracted.loading_date || extracted.invoice_date || "";
     document.getElementById("r-container").value = contNum.toUpperCase();
 
     if (UB_MATCH && UB_MATCH.auto){
       var parsed = parseAutoField(UB_MATCH.auto);
       document.getElementById("r-plates").value = parsed.plates;
+      document.getElementById("r-plates-echo").textContent = parsed.plates;
     } else {
       showStatus("Документи проаналізовано, але контейнер \"" + contNum + "\" не знайдено в UB.xlsx — заповни номер авто вручну.", "err");
-      document.getElementById("reviewArea").style.display = "block";
       document.getElementById("analyze-btn").disabled = false;
       return;
     }
 
     showStatus("✅ Готово. Перевір дані нижче перед створенням CMR.", "ok");
-    document.getElementById("reviewArea").style.display = "block";
   } catch (err) {
     showStatus("Помилка: " + err.message, "err");
   }
@@ -298,23 +376,33 @@ function cell(children, opts){
   return new docx.TableCell({
     children: children,
     columnSpan: opts.span || 1,
-    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    margins: { top: 40, bottom: 40, left: 80, right: 80 },
     verticalAlign: docx.VerticalAlign.TOP,
-    width: opts.width ? { size: opts.width, type: docx.WidthType.DXA } : undefined
+    width: { size: opts.span ? COL_W[0]+COL_W[1] : COL_W[opts.col||0], type: docx.WidthType.DXA }
   });
 }
 function labelPara(text){
-  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text, size: 14, font: "Arial", color: "444444" }) ], spacing: { after: 40 } });
+  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text, size: 24, font: "Arial" }) ], spacing: { after: 20 } });
 }
 function valuePara(text){
-  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text || "", size: 20, font: "Arial" }) ] });
+  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text || "", size: 16, font: "Arial" }) ] });
 }
 function boxCell(num, labelUA, labelEN, value, opts){
-  return cell([ labelPara(num + " " + labelUA + " / " + labelEN), valuePara(value) ], opts);
+  opts = opts || {};
+  return cell([ labelPara(num + " " + labelUA + " " + labelEN), valuePara(value) ], opts);
 }
 function emptyBoxCell(num, labelUA, labelEN, opts){
-  return cell([ labelPara(num + " " + labelUA + " / " + labelEN) ], opts);
+  return cell([ labelPara(num + " " + labelUA + " " + labelEN) ], opts || {});
 }
+// Точні розміри колонок (twips), зняті з оригінального документа
+var COL_W = [4989, 4844];
+// Точні висоти рядків (twips), зняті з оригінального документа
+var ROW_H = [1487, 920, 941, 1130, 333, 2219, 3665, 774, 711, 626, 312];
+function rowH(i){ return { height: { value: ROW_H[i], rule: docx.HeightRule.ATLEAST } }; }
+// Червона рамка — фірмовий вигляд CMR-бланку (CC0000, 1pt), як в оригіналі
+var RED = "CC0000";
+var REDBORDER = { style: docx.BorderStyle.SINGLE, size: 8, color: RED };
+var CELLBORDERS = { top: REDBORDER, bottom: REDBORDER, left: REDBORDER, right: REDBORDER };
 
 async function generateCmr(){
   var genStatus = document.getElementById("genStatus");
@@ -330,64 +418,69 @@ async function generateCmr(){
   var established = gv("r-established");
   var contNum = gv("r-container") || "CMR";
 
-  var titlePara = new docx.Paragraph({
+  var titlePara1 = new docx.Paragraph({
     alignment: docx.AlignmentType.CENTER,
     children: [
-      new docx.TextRun({ text: "Міжнародна товарно-транспортна накладна", bold: true, size: 22, font: "Arial", break: 0 }),
-      new docx.TextRun({ text: "International Consignment Note", size: 18, font: "Arial", break: 1 }),
-      new docx.TextRun({ text: "CMR", bold: true, size: 28, font: "Arial", break: 1 })
+      new docx.TextRun({ text: "Міжнародна товарно-транспортна накладна", bold: true, size: 12, font: "Arial" }),
+      new docx.TextRun({ text: "International Consignment Note", size: 12, font: "Arial", break: 1 })
     ]
+  });
+  var titlePara2 = new docx.Paragraph({
+    alignment: docx.AlignmentType.CENTER,
+    children: [ new docx.TextRun({ text: "CMR", bold: true, size: 23, font: "Arial" }) ]
   });
 
   var table = new docx.Table({
-    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    width: { size: COL_W[0]+COL_W[1], type: docx.WidthType.DXA },
+    columnWidths: COL_W,
+    borders: { top: REDBORDER, bottom: REDBORDER, left: REDBORDER, right: REDBORDER, insideHorizontal: REDBORDER, insideVertical: REDBORDER },
     rows: [
-      new docx.TableRow({ children: [
-        boxCell("1", "Відправник (найменування, адреса, країна)", "Sender (name, address, country)", sender),
-        cell([titlePara])
+      new docx.TableRow({ ...rowH(0), children: [
+        boxCell("1", "Відправник (найменування, адреса, країна)", "Sender (name, address, country)", sender, {col:0}),
+        cell([titlePara1, titlePara2], {col:1})
       ]}),
-      new docx.TableRow({ children: [
+      new docx.TableRow({ ...rowH(1), children: [
         boxCell("2", "Одержувач (найменування, адреса, країна)", "Consignee (name, address, country)", recv, {span:2})
       ]}),
-      new docx.TableRow({ children: [
-        boxCell("3", "Місце розвантаження вантажу", "Place of delivery of the goods", delivPlace),
-        boxCell("16", "Перевізник (найменування, адреса, країна)", "Carrier (name, address, country)", plates)
+      new docx.TableRow({ ...rowH(2), children: [
+        boxCell("3", "Місце розвантаження вантажу", "Place of delivery of the goods", delivPlace, {col:0}),
+        boxCell("16", "Перевізник (найменування, адреса, країна)", "Carrier (name, address, country)", plates, {col:1})
       ]}),
-      new docx.TableRow({ children: [
-        boxCell("4", "Місце і дата завантаження вантажу", "Place and date of taking over the goods", loadPlace + (loadDate ? ("\nДата/Date: " + loadDate) : "")),
-        emptyBoxCell("17", "Наступний перевізник (найменування, адреса, країна)", "Successive carrier (name, address, country)")
+      new docx.TableRow({ ...rowH(3), children: [
+        boxCell("4", "Місце і дата завантаження вантажу", "Place and date of taking over the goods", loadPlace + (loadDate ? ("\nДата/Date: " + loadDate) : ""), {col:0}),
+        emptyBoxCell("17", "Наступний перевізник (найменування, адреса, країна)", "Successive carrier (name, address, country)", {col:1})
       ]}),
-      new docx.TableRow({ children: [
+      new docx.TableRow({ ...rowH(4), children: [
         boxCell("5", "Додані документи", "Documents attached", docsAttached, {span:2})
       ]}),
-      new docx.TableRow({ children: [
+      new docx.TableRow({ ...rowH(5), children: [
         cell([new docx.Paragraph({children:[]})], {span:2})
       ]}),
-      new docx.TableRow({ children: [
-        emptyBoxCell("13", "Вказівки відправника (митне та інше оформлення)", "Sender's instructions (customs and other formalities)"),
-        cell([new docx.Paragraph({children:[]})])
+      new docx.TableRow({ ...rowH(6), children: [
+        emptyBoxCell("13", "Вказівки відправника (митне та інше оформлення)", "Sender's instructions (customs and other formalities)", {col:0}),
+        cell([new docx.Paragraph({children:[]})], {col:1})
       ]}),
-      new docx.TableRow({ children: [
-        emptyBoxCell("14 / 15", "Повернення / Умови оплати", "Refund / Instructions for payment of carriage"),
-        emptyBoxCell("20", "Особливі узгоджені умови", "Special agreements")
+      new docx.TableRow({ ...rowH(7), children: [
+        emptyBoxCell("14 / 15", "Повернення / Умови оплати", "Refund / Instructions for payment of carriage", {col:0}),
+        emptyBoxCell("20", "Особливі узгоджені умови", "Special agreements", {col:1})
       ]}),
-      new docx.TableRow({ children: [
-        boxCell("21", "Складено в", "Established in", established + (loadDate ? ("\nДата/Date: " + loadDate) : "")),
-        emptyBoxCell("24", "Вантаж отримано / Дата", "Goods received / Date")
+      new docx.TableRow({ ...rowH(8), children: [
+        boxCell("21", "Складено в", "Established in", established + (loadDate ? ("\nДата/Date: " + loadDate) : ""), {col:0}),
+        emptyBoxCell("24", "Вантаж отримано / Дата", "Goods received / Date", {col:1})
       ]}),
-      new docx.TableRow({ children: [
-        boxCell("22", "Підпис та штамп відправника", "Signature and stamp of the sender", plates),
-        emptyBoxCell("23", "Підпис та штамп перевізника", "Signature and stamp of the carrier")
+      new docx.TableRow({ ...rowH(9), children: [
+        boxCell("22", "Підпис та штамп відправника", "Signature and stamp of the sender", plates, {col:0}),
+        emptyBoxCell("23", "Підпис та штамп перевізника", "Signature and stamp of the carrier", {col:1})
       ]}),
-      new docx.TableRow({ children: [
-        emptyBoxCell("25", "Реєстрац. номер — Тягач/Напівпричіп", "Registration No. — Tractor unit/Trailer"),
-        emptyBoxCell("26", "Марка — Тягач/Напівпричіп", "Make — Tractor unit/Trailer")
+      new docx.TableRow({ ...rowH(10), children: [
+        emptyBoxCell("25", "Реєстрац. номер — Тягач/Напівпричіп", "Registration No. — Tractor unit/Trailer", {col:0}),
+        emptyBoxCell("26", "Марка — Тягач/Напівпричіп", "Make — Tractor unit/Trailer", {col:1})
       ]})
     ]
   });
 
   var doc = new docx.Document({
-    sections: [{ children: [ table ] }],
+    sections: [{ properties: { page: { size: { orientation: docx.PageOrientation.PORTRAIT } } }, children: [ table ] }],
     styles: { default: { document: { run: { font: "Arial", size: 20 } } } }
   });
 
@@ -403,6 +496,10 @@ async function generateCmr(){
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
+
+document.getElementById("r-plates").addEventListener("input", function(){
+  document.getElementById("r-plates-echo").textContent = this.value;
+});
 </script>
 </body>
 </html>
