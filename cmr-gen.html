@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>DocCreator — CMR (Гарні Речі)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;margin:0;padding:0}
+.wrap{max-width:900px;margin:24px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+.card h1{font-size:18px;margin:0 0 4px}
+.card h1 span{color:#f59e0b}
+.card p.sub{font-size:12px;color:#6b7280;margin:0 0 16px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;color:#6b7280;margin-bottom:4px;font-weight:600;letter-spacing:.03em}
+.field input[type=text],.field input[type=number],.field textarea{width:100%;border:1px solid #e5e7eb;border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;box-sizing:border-box}
+.field input:focus,.field textarea:focus{border-color:#f59e0b;outline:none}
+.field textarea{resize:vertical;min-height:50px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{border:none;border-radius:8px;padding:11px 20px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-yellow{background:#f59e0b;color:#fff}.btn-yellow:hover{background:#d97706}
+.btn-yellow:disabled{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+.btn-gray{background:#f3f4f6;color:#374151;margin-left:8px}
+#status{font-size:12px;margin-top:10px;padding:9px 11px;border-radius:6px;display:none;line-height:1.5}
+#status.ok{background:#dcfce7;color:#166534;display:block}
+#status.err{background:#fee2e2;color:#991b1b;display:block}
+#status.busy{background:#fef3c7;color:#92400e;display:block}
+.hint{font-size:11px;color:#9ca3af;margin-top:3px}
+.section-title{font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #f3f4f6}
+
+/* CMR document */
+#cmrOut{display:none;background:#fff;padding:26px 30px;font-family:Arial,sans-serif;font-size:10.5px;line-height:1.4}
+#cmrOut table{width:100%;border-collapse:collapse}
+#cmrOut .outer{border:1.5px solid #000}
+#cmrOut td, #cmrOut th{border:1px solid #000;padding:4px 6px;vertical-align:top}
+#cmrOut .box-num{font-size:8px;color:#555;font-weight:bold}
+#cmrOut .box-label{font-size:8px;color:#333;font-style:italic}
+#cmrOut .box-val{font-size:11px;font-weight:600;margin-top:2px;white-space:pre-wrap}
+#cmrOut .title-row{text-align:center;padding:8px}
+#cmrOut .title-main{font-size:15px;font-weight:bold}
+#cmrOut .title-sub{font-size:9px;color:#555;margin-top:2px}
+.printBtnBar{text-align:center;margin:16px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card" id="formCard">
+    <h1>📄 DocCreator — CMR <span>(Гарні Речі)</span></h1>
+    <p class="sub">Завантаж пакет документів (інвойс, пакувальний лист) і файл UB.xlsx — ШІ проаналізує документи, дані по авто підтягнуться з UB за номером контейнера.</p>
+
+    <div class="section-title">1. Документи для аналізу</div>
+    <div class="field">
+      <label>ПАКЕТ ДОКУМЕНТІВ (PDF або зображення — інвойс, пакувальний лист)</label>
+      <input type="file" id="f-docs" accept=".pdf,.png,.jpg,.jpeg" multiple>
+      <div class="hint">Можна вибрати декілька файлів одразу (Ctrl+клік)</div>
+    </div>
+
+    <div class="section-title">2. Дані по авто (з UB.xlsx)</div>
+    <div class="grid2">
+      <div class="field">
+        <label>ФАЙЛ UB.xlsx</label>
+        <input type="file" id="f-ub" accept=".xlsx,.xls">
+      </div>
+      <div class="field">
+        <label>№ КОНТЕЙНЕРА</label>
+        <input type="text" id="f-container" placeholder="CMAU8813892">
+      </div>
+    </div>
+
+    <button class="btn btn-yellow" id="analyze-btn" onclick="analyze()">🤖 Проаналізувати документи</button>
+    <div id="status"></div>
+
+    <div id="reviewArea" style="display:none">
+      <div class="section-title">3. Перевір і виправ дані перед створенням CMR</div>
+
+      <div class="grid2">
+        <div class="field"><label>ВІДПРАВНИК — назва (Sender — name)</label><input type="text" id="r-sender-name"></div>
+        <div class="field"><label>ВІДПРАВНИК — адреса (Sender — address)</label><input type="text" id="r-sender-addr"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>ОДЕРЖУВАЧ — назва (Consignee — name)</label><input type="text" id="r-recv-name" value="ТОВ «ГАРНІ РЕЧІ»"></div>
+        <div class="field"><label>ОДЕРЖУВАЧ — адреса (Consignee — address)</label><input type="text" id="r-recv-addr" value="м. Кропивницький, Україна / Kropyvnytskyi, Ukraine"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>МІСЦЕ ЗАВАНТАЖЕННЯ (Place of loading)</label><input type="text" id="r-load-place" value="Польща / Poland"></div>
+        <div class="field"><label>ДАТА ЗАВАНТАЖЕННЯ (Date of loading)</label><input type="text" id="r-load-date" placeholder="ДД.ММ.РРРР"></div>
+      </div>
+
+      <div class="field"><label>МІСЦЕ ДОСТАВКИ (Place of delivery)</label><input type="text" id="r-deliv-place" value="м. Кропивницький, Україна / Kropyvnytskyi, Ukraine"></div>
+
+      <div class="field"><label>НАЙМЕНУВАННЯ ВАНТАЖУ (Description of goods, UA / EN)</label><textarea id="r-goods"></textarea></div>
+
+      <div class="grid2">
+        <div class="field"><label>К-ТЬ МІСЦЬ (Number of packages)</label><input type="text" id="r-packages"></div>
+        <div class="field"><label>ВАГА БРУТТО, КГ (Gross weight, kg)</label><input type="text" id="r-weight"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>№ ІНВОЙСУ (Invoice No.)</label><input type="text" id="r-invoice"></div>
+        <div class="field"><label>№ ПАКУВАЛЬНОГО ЛИСТА (Packing list No.)</label><input type="text" id="r-packlist"></div>
+      </div>
+
+      <div class="section-title">Перевізник (з UB.xlsx за номером контейнера)</div>
+      <div class="grid2">
+        <div class="field"><label>НОМЕРНІ ЗНАКИ АВТО/ПРИЧЕПА (Vehicle reg. no.) — латиницею</label><input type="text" id="r-plates"></div>
+        <div class="field"><label>ВОДІЙ (Driver)</label><input type="text" id="r-driver"></div>
+      </div>
+      <div class="field"><label>№ КОНТЕЙНЕРА (Container No.)</label><input type="text" id="r-container"></div>
+
+      <button class="btn btn-yellow" onclick="generateCmr()">Сформувати CMR</button>
+    </div>
+  </div>
+
+  <div class="printBtnBar" id="printBar" style="display:none">
+    <button class="btn btn-yellow" id="download-btn" onclick="downloadPdf()">⬇ Завантажити PDF</button>
+    <button class="btn btn-gray" onclick="backToForm()">← Назад до редагування</button>
+  </div>
+
+  <div id="cmrOut">
+    <div class="outer">
+      <table>
+        <tr>
+          <td colspan="2" style="width:50%">
+            <div class="box-num">1</div>
+            <div class="box-label">Відправник (назва, адреса, країна) / Sender (name, address, country)</div>
+            <div class="box-val" id="o-sender"></div>
+          </td>
+          <td style="width:50%">
+            <div class="title-row">
+              <div class="title-main">CMR</div>
+              <div class="title-sub">МІЖНАРОДНА ТОВАРНО-ТРАНСПОРТНА НАКЛАДНА<br>INTERNATIONAL CONSIGNMENT NOTE</div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <div class="box-num">2</div>
+            <div class="box-label">Одержувач (назва, адреса, країна) / Consignee (name, address, country)</div>
+            <div class="box-val" id="o-recv"></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:50%">
+            <div class="box-num">3</div>
+            <div class="box-label">Місце розвантаження / Place of delivery</div>
+            <div class="box-val" id="o-delivplace"></div>
+          </td>
+          <td colspan="2">
+            <div class="box-num">4</div>
+            <div class="box-label">Місце і дата завантаження / Place and date of loading</div>
+            <div class="box-val" id="o-loadplacedate"></div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <div class="box-num">5</div>
+            <div class="box-label">Супровідні документи / Documents attached</div>
+            <div class="box-val" id="o-docs"></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:34%">
+            <div class="box-num">6</div>
+            <div class="box-label">Маркування і номери / Marks and numbers</div>
+            <div class="box-val" id="o-container"></div>
+          </td>
+          <td style="width:16%">
+            <div class="box-num">7</div>
+            <div class="box-label">К-ть місць / No. of packages</div>
+            <div class="box-val" id="o-packages"></div>
+          </td>
+          <td>
+            <div class="box-num">9</div>
+            <div class="box-label">Вага брутто, кг / Gross weight, kg</div>
+            <div class="box-val" id="o-weight"></div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <div class="box-num">8</div>
+            <div class="box-label">Рід упаковки, найменування вантажу / Method of packing, description of goods</div>
+            <div class="box-val" id="o-goods"></div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <div class="box-num">16</div>
+            <div class="box-label">Перевізник (назва, адреса, країна) / Carrier (name, address, country)</div>
+            <div class="box-val" id="o-carrier"></div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <div class="box-num">21</div>
+            <div class="box-label">Транспортний засіб — номерні знаки / Vehicle registration No.</div>
+            <div class="box-val" id="o-plates"></div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3" style="height:60px">
+            <div class="box-num">22 / 23 / 24</div>
+            <div class="box-label">Підпис і штамп відправника / відправника-перевізника / одержувача — Signature and stamp of sender / carrier / consignee</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var ANALYZED_IMAGES = [];
+var UB_MATCH = null;
+
+// ── Візуальна транслітерація укр. номерів (кирилиця, схожа на латиницю) ──
+var PLATE_MAP = {'А':'A','В':'B','Е':'E','І':'I','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','Х':'X'};
+function transliteratePlate(s){
+  return String(s||"").split("").map(function(ch){ return PLATE_MAP[ch] || ch; }).join("");
+}
+
+// ── Фонетична транслітерація (для ПІБ водія — не для номерів) ──
+var NAME_MAP = {'а':'a','б':'b','в':'v','г':'h','ґ':'g','д':'d','е':'e','є':'ie','ж':'zh','з':'z','и':'y','і':'i','ї':'i','й':'i','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ь':'','ю':'iu','я':'ia'};
+function transliterateName(s){
+  return String(s||"").split("").map(function(ch){
+    var lower = ch.toLowerCase();
+    var mapped = NAME_MAP[lower];
+    if (mapped === undefined) return ch;
+    return (ch === ch.toUpperCase() && ch !== ch.toLowerCase()) ? (mapped.charAt(0).toUpperCase() + mapped.slice(1)) : mapped;
+  }).join("");
+}
+
+function gv(id){ var e=document.getElementById(id); return e ? e.value : ""; }
+function showStatus(msg, cls){
+  var el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = cls;
+}
+
+// ── PDF -> зображення (сторінка за сторінкою) ──
+async function pdfToImages(file){
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var images = [];
+  for (var i = 1; i <= pdf.numPages; i++){
+    var page = await pdf.getPage(i);
+    var viewport = page.getViewport({ scale: 1.8 });
+    var canvas = document.createElement("canvas");
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    var ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    images.push(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+  }
+  return images;
+}
+
+function fileToBase64Image(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result.split(",")[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Пошук контейнера в UB.xlsx (клієнтський розбір) ──
+function ubCellText(v){
+  if (v === null || v === undefined) return "";
+  if (v instanceof Date) {
+    var rounded = new Date(Math.round(v.getTime() / 86400000) * 86400000);
+    var d = rounded.getUTCDate(), m = rounded.getUTCMonth()+1, y = rounded.getUTCFullYear();
+    return (d<10?"0":"")+d+"."+(m<10?"0":"")+m+"."+y;
+  }
+  return String(v).trim();
+}
+
+async function findInUb(ubFile, containerNum){
+  var buf = await ubFile.arrayBuffer();
+  var wb = XLSX.read(buf, { type: "array", cellDates: true });
+  var sheetName = wb.SheetNames.find(function(n){ return n.toLowerCase().replace(/\s/g,"").indexOf("fcl") >= 0; });
+  if (!sheetName) return null;
+  var ws = wb.Sheets[sheetName];
+  var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, cellDates: true });
+  var target = containerNum.trim().toUpperCase();
+  for (var i = 1; i < rows.length; i++){
+    var r = rows[i];
+    if (!r || !r[4]) continue;
+    if (String(r[4]).trim().toUpperCase() === target){
+      return {
+        auto: ubCellText(r[27]),   // "Данні по авто ,водій,тел"
+        supplier: ubCellText(r[8])
+      };
+    }
+  }
+  return null;
+}
+
+function parseAutoField(text){
+  var raw = String(text||"").replace(/\n/g, " ").trim();
+
+  // 1. Спершу прибираю телефон (щоб цифри не "з'їдали" сусіднє слово при пошуку номера авто)
+  raw = raw.replace(/[-]?[+]?[\d][\d\s-]{5,}\d/g, " ");
+
+  // 2. Номер авто: 1-3 літери, (пробіл?), 3-4 цифри, (пробіл?), 0-3 літери.
+  // Без \b — воно не розпізнає кириличні літери як "словесні" і ламає змішані номери (кирилиця+латиниця).
+  var plateRe = /[A-ZА-ЯІЇЄҐ]{1,3}\s?\d{3,4}\s?[A-ZА-ЯІЇЄҐ]{0,3}/gi;
+  var plateMatches = raw.match(plateRe) || [];
+  var plates = plateMatches.map(function(p){ return transliteratePlate(p.replace(/\s+/g, "")); }).join(" / ");
+
+  // 3. Лишок — ім'я водія
+  var rest = raw;
+  plateMatches.forEach(function(p){ rest = rest.replace(p, " "); });
+  rest = rest.replace(/\//g, " ");
+  rest = rest.replace(/водій|driver/gi, " ");
+  rest = rest.replace(/[,;+-]/g, " ");
+  var nameRaw = rest.replace(/\s+/g, " ").trim();
+  var driver = transliterateName(nameRaw);
+  return { plates: plates, driver: driver };
+}
+
+// ── Головний аналіз ──
+async function analyze(){
+  var docsInp = document.getElementById("f-docs");
+  var ubInp = document.getElementById("f-ub");
+  var contNum = gv("f-container").trim();
+
+  if (!docsInp.files.length) { showStatus("Обери хоча б один файл документів", "err"); return; }
+  if (!ubInp.files[0]) { showStatus("Обери файл UB.xlsx", "err"); return; }
+  if (!contNum) { showStatus("Введи номер контейнера", "err"); return; }
+
+  document.getElementById("analyze-btn").disabled = true;
+  showStatus("Читаю документи…", "busy");
+
+  try {
+    // 1. Розбираю документи в зображення
+    var images = [];
+    for (var i = 0; i < docsInp.files.length; i++){
+      var f = docsInp.files[i];
+      if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")){
+        var pageImages = await pdfToImages(f);
+        images = images.concat(pageImages);
+      } else {
+        images.push(await fileToBase64Image(f));
+      }
+    }
+    ANALYZED_IMAGES = images;
+
+    // 2. Шукаю авто в UB.xlsx
+    showStatus("Шукаю дані по авто в UB.xlsx…", "busy");
+    UB_MATCH = await findInUb(ubInp.files[0], contNum);
+
+    // 3. Відправляю зображення на аналіз Claude
+    showStatus("Аналізую документи (ШІ)…", "busy");
+    var content = images.map(function(b64){
+      return { type: "image", source: { type: "base64", media_type: "image/jpeg", data: b64 } };
+    });
+    content.push({
+      type: "text",
+      text: "Це пакет документів (інвойс, пакувальний лист тощо) для міжнародного вантажу з Китаю/Польщі в Україну. " +
+        "Витягни дані для складання CMR-накладної. Дай ВИКЛЮЧНО JSON без жодного іншого тексту, у форматі:\n" +
+        '{"sender_name":"...", "sender_address":"...", "goods_description":"назва вантажу українською / English description", ' +
+        '"packages":"кількість місць, напр. 120 коробок / 120 boxes", "weight_kg":"вага брутто в кг, тільки число", ' +
+        '"invoice_no":"номер інвойсу", "packing_list_no":"номер пакувального листа"}\n' +
+        "Якщо якесь поле не вдається знайти в документах — постав порожній рядок для нього. " +
+        "Назву вантажу і кількість місць дай двомовно: спершу українською, через ' / ' англійською."
+    });
+
+    var resp = await fetch("/api/anthropic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8000,
+        messages: [{ role: "user", content: content }]
+      })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ? (data.error.message || JSON.stringify(data.error)) : "Помилка API");
+
+    var textOut = (data.content || []).filter(function(b){return b.type==="text";}).map(function(b){return b.text;}).join("");
+    var jsonMatch = textOut.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Не вдалось розпізнати відповідь ШІ як JSON: " + textOut.slice(0,300));
+    var extracted = JSON.parse(jsonMatch[0]);
+
+    // 4. Заповнюю форму перевірки
+    document.getElementById("r-sender-name").value = extracted.sender_name || (UB_MATCH ? UB_MATCH.supplier : "");
+    document.getElementById("r-sender-addr").value = extracted.sender_address || "";
+    document.getElementById("r-goods").value = extracted.goods_description || "";
+    document.getElementById("r-packages").value = extracted.packages || "";
+    document.getElementById("r-weight").value = extracted.weight_kg || "";
+    document.getElementById("r-invoice").value = extracted.invoice_no || "";
+    document.getElementById("r-packlist").value = extracted.packing_list_no || "";
+    document.getElementById("r-container").value = contNum.toUpperCase();
+
+    if (UB_MATCH && UB_MATCH.auto){
+      var parsed = parseAutoField(UB_MATCH.auto);
+      document.getElementById("r-plates").value = parsed.plates;
+      document.getElementById("r-driver").value = parsed.driver;
+    } else {
+      showStatus("Документи проаналізовано, але контейнер \"" + contNum + "\" не знайдено в UB.xlsx — заповни авто/водія вручну.", "err");
+      document.getElementById("reviewArea").style.display = "block";
+      document.getElementById("analyze-btn").disabled = false;
+      return;
+    }
+
+    showStatus("✅ Готово. Перевір дані нижче перед створенням CMR.", "ok");
+    document.getElementById("reviewArea").style.display = "block";
+  } catch (err) {
+    showStatus("Помилка: " + err.message, "err");
+  }
+  document.getElementById("analyze-btn").disabled = false;
+}
+
+function generateCmr(){
+  document.getElementById("o-sender").textContent = gv("r-sender-name") + (gv("r-sender-addr") ? ", " + gv("r-sender-addr") : "");
+  document.getElementById("o-recv").textContent = gv("r-recv-name") + ", " + gv("r-recv-addr");
+  document.getElementById("o-delivplace").textContent = gv("r-deliv-place");
+  document.getElementById("o-loadplacedate").textContent = gv("r-load-place") + (gv("r-load-date") ? ", " + gv("r-load-date") : "");
+  document.getElementById("o-docs").textContent = [gv("r-invoice") ? ("Інвойс/Invoice № " + gv("r-invoice")) : "", gv("r-packlist") ? ("Пакувальний лист/Packing list № " + gv("r-packlist")) : ""].filter(Boolean).join("\n");
+  document.getElementById("o-container").textContent = "Контейнер / Container: " + gv("r-container");
+  document.getElementById("o-packages").textContent = gv("r-packages");
+  document.getElementById("o-weight").textContent = gv("r-weight");
+  document.getElementById("o-goods").textContent = gv("r-goods");
+  document.getElementById("o-carrier").textContent = gv("r-driver");
+  document.getElementById("o-plates").textContent = gv("r-plates");
+
+  document.getElementById("formCard").style.display = "none";
+  document.getElementById("cmrOut").style.display = "block";
+  document.getElementById("printBar").style.display = "block";
+}
+
+function downloadPdf(){
+  var btn = document.getElementById("download-btn");
+  btn.disabled = true; btn.textContent = "Готую файл…";
+  var el = document.getElementById("cmrOut");
+  var contNum = gv("r-container") || "CMR";
+  var opt = {
+    margin: 8,
+    filename: "CMR_" + contNum + ".pdf",
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+  };
+  html2pdf().set(opt).from(el).save().then(function(){
+    btn.disabled = false; btn.textContent = "⬇ Завантажити PDF";
+  }).catch(function(err){
+    btn.disabled = false; btn.textContent = "⬇ Завантажити PDF";
+    alert("Помилка створення PDF: " + err.message);
+  });
+}
+
+function backToForm(){
+  document.getElementById("formCard").style.display = "block";
+  document.getElementById("cmrOut").style.display = "none";
+  document.getElementById("printBar").style.display = "none";
+}
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+</script>
+</body>
+</html>
