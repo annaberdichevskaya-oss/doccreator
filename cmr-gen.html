@@ -5,7 +5,8 @@
 <title>DocCreator — CMR (Гарні Речі)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.umd.cjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <style>
 body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;margin:0;padding:0}
 .wrap{max-width:900px;margin:24px auto;padding:0 16px}
@@ -29,19 +30,6 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
 #status.busy{background:#fef3c7;color:#92400e;display:block}
 .hint{font-size:11px;color:#9ca3af;margin-top:3px}
 .section-title{font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #f3f4f6}
-
-/* CMR document */
-#cmrOut{display:none;background:#fff;padding:26px 30px;font-family:Arial,sans-serif;font-size:10.5px;line-height:1.4}
-#cmrOut table{width:100%;border-collapse:collapse}
-#cmrOut .outer{border:1.5px solid #000}
-#cmrOut td, #cmrOut th{border:1px solid #000;padding:4px 6px;vertical-align:top}
-#cmrOut .box-num{font-size:8px;color:#555;font-weight:bold}
-#cmrOut .box-label{font-size:8px;color:#333;font-style:italic}
-#cmrOut .box-val{font-size:11px;font-weight:600;margin-top:2px;white-space:pre-wrap}
-#cmrOut .title-row{text-align:center;padding:8px}
-#cmrOut .title-main{font-size:15px;font-weight:bold}
-#cmrOut .title-sub{font-size:9px;color:#555;margin-top:2px}
-.printBtnBar{text-align:center;margin:16px 0}
 </style>
 </head>
 <body>
@@ -77,137 +65,33 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
       <div class="section-title">3. Перевір і виправ дані перед створенням CMR</div>
 
       <div class="grid2">
-        <div class="field"><label>ВІДПРАВНИК — назва (Sender — name)</label><input type="text" id="r-sender-name"></div>
-        <div class="field"><label>ВІДПРАВНИК — адреса (Sender — address)</label><input type="text" id="r-sender-addr"></div>
+        <div class="field"><label>1. ВІДПРАВНИК — назва (Sender — name)</label><input type="text" id="r-sender-name"></div>
+        <div class="field"><label>1. ВІДПРАВНИК — адреса (Sender — address)</label><input type="text" id="r-sender-addr"></div>
       </div>
+
+      <div class="field"><label>2. ОДЕРЖУВАЧ (Consignee) — повністю</label><textarea id="r-recv">GARNI RECHI LIMITED COMPANY, Ukraine, 25012, Kirovohrad Oblast, Kropyvnytskyi, Yevhen Chykalenka Street, 1A, room 423, Ukraine</textarea></div>
+
+      <div class="field"><label>3. МІСЦЕ РОЗВАНТАЖЕННЯ (Place of delivery)</label><input type="text" id="r-deliv-place" value="Kropyvnytskyi, Kirovohrad region"></div>
 
       <div class="grid2">
-        <div class="field"><label>ОДЕРЖУВАЧ — назва (Consignee — name)</label><input type="text" id="r-recv-name" value="ТОВ «ГАРНІ РЕЧІ»"></div>
-        <div class="field"><label>ОДЕРЖУВАЧ — адреса (Consignee — address)</label><input type="text" id="r-recv-addr" value="м. Кропивницький, Україна / Kropyvnytskyi, Ukraine"></div>
+        <div class="field"><label>4. МІСЦЕ ЗАВАНТАЖЕННЯ (Place of loading)</label><textarea id="r-load-place">IGS GDAŃSK
+Ul. Ordynacka 12,
+83-050 Bąkowo, Poland</textarea></div>
+        <div class="field"><label>4. ДАТА ЗАВАНТАЖЕННЯ (Date of loading)</label><input type="text" id="r-load-date" placeholder="ДД.ММ.РРРР"></div>
       </div>
 
-      <div class="grid2">
-        <div class="field"><label>МІСЦЕ ЗАВАНТАЖЕННЯ (Place of loading)</label><input type="text" id="r-load-place" value="Польща / Poland"></div>
-        <div class="field"><label>ДАТА ЗАВАНТАЖЕННЯ (Date of loading)</label><input type="text" id="r-load-date" placeholder="ДД.ММ.РРРР"></div>
-      </div>
-
-      <div class="field"><label>МІСЦЕ ДОСТАВКИ (Place of delivery)</label><input type="text" id="r-deliv-place" value="м. Кропивницький, Україна / Kropyvnytskyi, Ukraine"></div>
-
-      <div class="field"><label>НАЙМЕНУВАННЯ ВАНТАЖУ (Description of goods, UA / EN)</label><textarea id="r-goods"></textarea></div>
-
-      <div class="grid2">
-        <div class="field"><label>К-ТЬ МІСЦЬ (Number of packages)</label><input type="text" id="r-packages"></div>
-        <div class="field"><label>ВАГА БРУТТО, КГ (Gross weight, kg)</label><input type="text" id="r-weight"></div>
-      </div>
-
-      <div class="grid2">
-        <div class="field"><label>№ ІНВОЙСУ (Invoice No.)</label><input type="text" id="r-invoice"></div>
-        <div class="field"><label>№ ПАКУВАЛЬНОГО ЛИСТА (Packing list No.)</label><input type="text" id="r-packlist"></div>
-      </div>
+      <div class="field"><label>5. ДОДАНІ ДОКУМЕНТИ (Documents attached)</label><input type="text" id="r-docs" placeholder="INVOICE NO. 8 DD 07.07.2026"></div>
 
       <div class="section-title">Перевізник (з UB.xlsx за номером контейнера)</div>
       <div class="grid2">
-        <div class="field"><label>НОМЕРНІ ЗНАКИ АВТО/ПРИЧЕПА (Vehicle reg. no.) — латиницею</label><input type="text" id="r-plates"></div>
-        <div class="field"><label>ВОДІЙ (Driver)</label><input type="text" id="r-driver"></div>
+        <div class="field"><label>16 / 22. НОМЕРНІ ЗНАКИ (Carrier / Signature) — латиницею</label><input type="text" id="r-plates"></div>
+        <div class="field"><label>№ КОНТЕЙНЕРА (для назви файлу)</label><input type="text" id="r-container"></div>
       </div>
-      <div class="field"><label>№ КОНТЕЙНЕРА (Container No.)</label><input type="text" id="r-container"></div>
 
-      <button class="btn btn-yellow" onclick="generateCmr()">Сформувати CMR</button>
-    </div>
-  </div>
+      <div class="field"><label>21. СКЛАДЕНО В (Established in)</label><input type="text" id="r-established" value="83-050 Bakowo Poland"></div>
 
-  <div class="printBtnBar" id="printBar" style="display:none">
-    <button class="btn btn-yellow" id="download-btn" onclick="downloadPdf()">⬇ Завантажити PDF</button>
-    <button class="btn btn-gray" onclick="backToForm()">← Назад до редагування</button>
-  </div>
-
-  <div id="cmrOut">
-    <div class="outer">
-      <table>
-        <tr>
-          <td colspan="2" style="width:50%">
-            <div class="box-num">1</div>
-            <div class="box-label">Відправник (назва, адреса, країна) / Sender (name, address, country)</div>
-            <div class="box-val" id="o-sender"></div>
-          </td>
-          <td style="width:50%">
-            <div class="title-row">
-              <div class="title-main">CMR</div>
-              <div class="title-sub">МІЖНАРОДНА ТОВАРНО-ТРАНСПОРТНА НАКЛАДНА<br>INTERNATIONAL CONSIGNMENT NOTE</div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3">
-            <div class="box-num">2</div>
-            <div class="box-label">Одержувач (назва, адреса, країна) / Consignee (name, address, country)</div>
-            <div class="box-val" id="o-recv"></div>
-          </td>
-        </tr>
-        <tr>
-          <td style="width:50%">
-            <div class="box-num">3</div>
-            <div class="box-label">Місце розвантаження / Place of delivery</div>
-            <div class="box-val" id="o-delivplace"></div>
-          </td>
-          <td colspan="2">
-            <div class="box-num">4</div>
-            <div class="box-label">Місце і дата завантаження / Place and date of loading</div>
-            <div class="box-val" id="o-loadplacedate"></div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3">
-            <div class="box-num">5</div>
-            <div class="box-label">Супровідні документи / Documents attached</div>
-            <div class="box-val" id="o-docs"></div>
-          </td>
-        </tr>
-        <tr>
-          <td style="width:34%">
-            <div class="box-num">6</div>
-            <div class="box-label">Маркування і номери / Marks and numbers</div>
-            <div class="box-val" id="o-container"></div>
-          </td>
-          <td style="width:16%">
-            <div class="box-num">7</div>
-            <div class="box-label">К-ть місць / No. of packages</div>
-            <div class="box-val" id="o-packages"></div>
-          </td>
-          <td>
-            <div class="box-num">9</div>
-            <div class="box-label">Вага брутто, кг / Gross weight, kg</div>
-            <div class="box-val" id="o-weight"></div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3">
-            <div class="box-num">8</div>
-            <div class="box-label">Рід упаковки, найменування вантажу / Method of packing, description of goods</div>
-            <div class="box-val" id="o-goods"></div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3">
-            <div class="box-num">16</div>
-            <div class="box-label">Перевізник (назва, адреса, країна) / Carrier (name, address, country)</div>
-            <div class="box-val" id="o-carrier"></div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3">
-            <div class="box-num">21</div>
-            <div class="box-label">Транспортний засіб — номерні знаки / Vehicle registration No.</div>
-            <div class="box-val" id="o-plates"></div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="3" style="height:60px">
-            <div class="box-num">22 / 23 / 24</div>
-            <div class="box-label">Підпис і штамп відправника / відправника-перевізника / одержувача — Signature and stamp of sender / carrier / consignee</div>
-          </td>
-        </tr>
-      </table>
+      <button class="btn btn-yellow" onclick="generateCmr()">📄 Створити CMR (.docx)</button>
+      <div id="genStatus" style="font-size:12px;margin-top:8px"></div>
     </div>
   </div>
 
@@ -362,11 +246,9 @@ async function analyze(){
       type: "text",
       text: "Це пакет документів (інвойс, пакувальний лист тощо) для міжнародного вантажу з Китаю/Польщі в Україну. " +
         "Витягни дані для складання CMR-накладної. Дай ВИКЛЮЧНО JSON без жодного іншого тексту, у форматі:\n" +
-        '{"sender_name":"...", "sender_address":"...", "goods_description":"назва вантажу українською / English description", ' +
-        '"packages":"кількість місць, напр. 120 коробок / 120 boxes", "weight_kg":"вага брутто в кг, тільки число", ' +
-        '"invoice_no":"номер інвойсу", "packing_list_no":"номер пакувального листа"}\n' +
-        "Якщо якесь поле не вдається знайти в документах — постав порожній рядок для нього. " +
-        "Назву вантажу і кількість місць дай двомовно: спершу українською, через ' / ' англійською."
+        '{"sender_name":"назва компанії-відправника (постачальника)", "sender_address":"повна адреса відправника", ' +
+        '"invoice_no":"номер інвойсу", "invoice_date":"дата інвойсу, ДД.ММ.РРРР"}\n' +
+        "Якщо якесь поле не вдається знайти в документах — постав порожній рядок для нього."
     });
 
     var resp = await fetch("/api/anthropic", {
@@ -374,7 +256,7 @@ async function analyze(){
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 8000,
+        max_tokens: 4000,
         messages: [{ role: "user", content: content }]
       })
     });
@@ -389,19 +271,14 @@ async function analyze(){
     // 4. Заповнюю форму перевірки
     document.getElementById("r-sender-name").value = extracted.sender_name || (UB_MATCH ? UB_MATCH.supplier : "");
     document.getElementById("r-sender-addr").value = extracted.sender_address || "";
-    document.getElementById("r-goods").value = extracted.goods_description || "";
-    document.getElementById("r-packages").value = extracted.packages || "";
-    document.getElementById("r-weight").value = extracted.weight_kg || "";
-    document.getElementById("r-invoice").value = extracted.invoice_no || "";
-    document.getElementById("r-packlist").value = extracted.packing_list_no || "";
+    document.getElementById("r-docs").value = (extracted.invoice_no ? ("INVOICE NO. " + extracted.invoice_no) : "") + (extracted.invoice_date ? (" DD " + extracted.invoice_date) : "");
     document.getElementById("r-container").value = contNum.toUpperCase();
 
     if (UB_MATCH && UB_MATCH.auto){
       var parsed = parseAutoField(UB_MATCH.auto);
       document.getElementById("r-plates").value = parsed.plates;
-      document.getElementById("r-driver").value = parsed.driver;
     } else {
-      showStatus("Документи проаналізовано, але контейнер \"" + contNum + "\" не знайдено в UB.xlsx — заповни авто/водія вручну.", "err");
+      showStatus("Документи проаналізовано, але контейнер \"" + contNum + "\" не знайдено в UB.xlsx — заповни номер авто вручну.", "err");
       document.getElementById("reviewArea").style.display = "block";
       document.getElementById("analyze-btn").disabled = false;
       return;
@@ -415,48 +292,112 @@ async function analyze(){
   document.getElementById("analyze-btn").disabled = false;
 }
 
-function generateCmr(){
-  document.getElementById("o-sender").textContent = gv("r-sender-name") + (gv("r-sender-addr") ? ", " + gv("r-sender-addr") : "");
-  document.getElementById("o-recv").textContent = gv("r-recv-name") + ", " + gv("r-recv-addr");
-  document.getElementById("o-delivplace").textContent = gv("r-deliv-place");
-  document.getElementById("o-loadplacedate").textContent = gv("r-load-place") + (gv("r-load-date") ? ", " + gv("r-load-date") : "");
-  document.getElementById("o-docs").textContent = [gv("r-invoice") ? ("Інвойс/Invoice № " + gv("r-invoice")) : "", gv("r-packlist") ? ("Пакувальний лист/Packing list № " + gv("r-packlist")) : ""].filter(Boolean).join("\n");
-  document.getElementById("o-container").textContent = "Контейнер / Container: " + gv("r-container");
-  document.getElementById("o-packages").textContent = gv("r-packages");
-  document.getElementById("o-weight").textContent = gv("r-weight");
-  document.getElementById("o-goods").textContent = gv("r-goods");
-  document.getElementById("o-carrier").textContent = gv("r-driver");
-  document.getElementById("o-plates").textContent = gv("r-plates");
-
-  document.getElementById("formCard").style.display = "none";
-  document.getElementById("cmrOut").style.display = "block";
-  document.getElementById("printBar").style.display = "block";
-}
-
-function downloadPdf(){
-  var btn = document.getElementById("download-btn");
-  btn.disabled = true; btn.textContent = "Готую файл…";
-  var el = document.getElementById("cmrOut");
-  var contNum = gv("r-container") || "CMR";
-  var opt = {
-    margin: 8,
-    filename: "CMR_" + contNum + ".pdf",
-    image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-  };
-  html2pdf().set(opt).from(el).save().then(function(){
-    btn.disabled = false; btn.textContent = "⬇ Завантажити PDF";
-  }).catch(function(err){
-    btn.disabled = false; btn.textContent = "⬇ Завантажити PDF";
-    alert("Помилка створення PDF: " + err.message);
+// ── Генерація справжнього .docx через бібліотеку docx.js, за точним шаблоном ──
+function cell(children, opts){
+  opts = opts || {};
+  return new docx.TableCell({
+    children: children,
+    columnSpan: opts.span || 1,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    verticalAlign: docx.VerticalAlign.TOP,
+    width: opts.width ? { size: opts.width, type: docx.WidthType.DXA } : undefined
   });
 }
+function labelPara(text){
+  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text, size: 14, font: "Arial", color: "444444" }) ], spacing: { after: 40 } });
+}
+function valuePara(text){
+  return new docx.Paragraph({ children: [ new docx.TextRun({ text: text || "", size: 20, font: "Arial" }) ] });
+}
+function boxCell(num, labelUA, labelEN, value, opts){
+  return cell([ labelPara(num + " " + labelUA + " / " + labelEN), valuePara(value) ], opts);
+}
+function emptyBoxCell(num, labelUA, labelEN, opts){
+  return cell([ labelPara(num + " " + labelUA + " / " + labelEN) ], opts);
+}
 
-function backToForm(){
-  document.getElementById("formCard").style.display = "block";
-  document.getElementById("cmrOut").style.display = "none";
-  document.getElementById("printBar").style.display = "none";
+async function generateCmr(){
+  var genStatus = document.getElementById("genStatus");
+  genStatus.textContent = "Формую документ…";
+
+  var sender = gv("r-sender-name") + (gv("r-sender-addr") ? ", " + gv("r-sender-addr") : "");
+  var recv = gv("r-recv");
+  var delivPlace = gv("r-deliv-place");
+  var loadPlace = gv("r-load-place");
+  var loadDate = gv("r-load-date");
+  var docsAttached = gv("r-docs");
+  var plates = gv("r-plates");
+  var established = gv("r-established");
+  var contNum = gv("r-container") || "CMR";
+
+  var titlePara = new docx.Paragraph({
+    alignment: docx.AlignmentType.CENTER,
+    children: [
+      new docx.TextRun({ text: "Міжнародна товарно-транспортна накладна", bold: true, size: 22, font: "Arial", break: 0 }),
+      new docx.TextRun({ text: "International Consignment Note", size: 18, font: "Arial", break: 1 }),
+      new docx.TextRun({ text: "CMR", bold: true, size: 28, font: "Arial", break: 1 })
+    ]
+  });
+
+  var table = new docx.Table({
+    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    rows: [
+      new docx.TableRow({ children: [
+        boxCell("1", "Відправник (найменування, адреса, країна)", "Sender (name, address, country)", sender),
+        cell([titlePara])
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("2", "Одержувач (найменування, адреса, країна)", "Consignee (name, address, country)", recv, {span:2})
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("3", "Місце розвантаження вантажу", "Place of delivery of the goods", delivPlace),
+        boxCell("16", "Перевізник (найменування, адреса, країна)", "Carrier (name, address, country)", plates)
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("4", "Місце і дата завантаження вантажу", "Place and date of taking over the goods", loadPlace + (loadDate ? ("\nДата/Date: " + loadDate) : "")),
+        emptyBoxCell("17", "Наступний перевізник (найменування, адреса, країна)", "Successive carrier (name, address, country)")
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("5", "Додані документи", "Documents attached", docsAttached, {span:2})
+      ]}),
+      new docx.TableRow({ children: [
+        cell([new docx.Paragraph({children:[]})], {span:2})
+      ]}),
+      new docx.TableRow({ children: [
+        emptyBoxCell("13", "Вказівки відправника (митне та інше оформлення)", "Sender's instructions (customs and other formalities)"),
+        cell([new docx.Paragraph({children:[]})])
+      ]}),
+      new docx.TableRow({ children: [
+        emptyBoxCell("14 / 15", "Повернення / Умови оплати", "Refund / Instructions for payment of carriage"),
+        emptyBoxCell("20", "Особливі узгоджені умови", "Special agreements")
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("21", "Складено в", "Established in", established + (loadDate ? ("\nДата/Date: " + loadDate) : "")),
+        emptyBoxCell("24", "Вантаж отримано / Дата", "Goods received / Date")
+      ]}),
+      new docx.TableRow({ children: [
+        boxCell("22", "Підпис та штамп відправника", "Signature and stamp of the sender", plates),
+        emptyBoxCell("23", "Підпис та штамп перевізника", "Signature and stamp of the carrier")
+      ]}),
+      new docx.TableRow({ children: [
+        emptyBoxCell("25", "Реєстрац. номер — Тягач/Напівпричіп", "Registration No. — Tractor unit/Trailer"),
+        emptyBoxCell("26", "Марка — Тягач/Напівпричіп", "Make — Tractor unit/Trailer")
+      ]})
+    ]
+  });
+
+  var doc = new docx.Document({
+    sections: [{ children: [ table ] }],
+    styles: { default: { document: { run: { font: "Arial", size: 20 } } } }
+  });
+
+  try {
+    var blob = await docx.Packer.toBlob(doc);
+    saveAs(blob, "CMR_" + contNum + "_doc.docx");
+    genStatus.textContent = "✅ Файл завантажено.";
+  } catch (err) {
+    genStatus.textContent = "Помилка створення файлу: " + err.message;
+  }
 }
 
 if (window.pdfjsLib) {
