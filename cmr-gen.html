@@ -79,7 +79,7 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f0f2f5;color:#1
       <tr>
         <td>
           <span class="box-label">3 Місце розвантаження вантажу / Place of delivery of the goods</span>
-          <input class="box-input" id="r-deliv-place" value="Kropyvnytskyi, Kirovohrad region">
+          <input class="box-input" id="r-deliv-place" value="Kropyvnytskyi, Kirovohrad region, Ukraine">
         </td>
         <td>
           <span class="box-label">16 Перевізник (найменування, адреса, країна) / Carrier (name, address, country)</span>
@@ -293,6 +293,15 @@ function ubCellText(v){
   return String(v).trim();
 }
 
+function cleanLoadAddress(text){
+  var s = String(text||"");
+  s = s.replace(/\(https?:\/\/[^)]*\)/gi, "");           // прибрати посилання в дужках (maps.google тощо)
+  s = s.replace(/\+?\d[\d\s-]{6,}\d/g, "");               // прибрати телефон
+  s = s.replace(/,\s*$/gm, "");                            // прибрати завислу кому в кінці рядка
+  s = s.split("\n").map(function(l){return l.trim();}).filter(Boolean).join("\n");
+  return s.trim();
+}
+
 async function findInUb(ubFile, containerNum){
   var buf = await ubFile.arrayBuffer();
   var wb = XLSX.read(buf, { type: "array", cellDates: true });
@@ -307,7 +316,8 @@ async function findInUb(ubFile, containerNum){
     if (String(r[4]).trim().toUpperCase() === target){
       return {
         auto: ubCellText(r[27]),   // "Данні по авто ,водій,тел"
-        supplier: ubCellText(r[8])
+        supplier: ubCellText(r[8]),
+        loadAddress: ubCellText(r[23])   // "Склад завантаження PL/UA"
       };
     }
   }
@@ -422,6 +432,9 @@ async function analyze(){
       var parsed = parseAutoField(UB_MATCH.auto);
       document.getElementById("r-plates").value = parsed.plates;
       document.getElementById("r-plates-echo").textContent = parsed.plates;
+      if (UB_MATCH.loadAddress) {
+        document.getElementById("r-load-place").value = cleanLoadAddress(UB_MATCH.loadAddress);
+      }
     } else {
       showStatus("Документи проаналізовано, але контейнер \"" + contNum + "\" не знайдено в UB.xlsx — заповни номер авто вручну.", "err");
       document.getElementById("analyze-btn").disabled = false;
